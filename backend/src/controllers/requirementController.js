@@ -67,7 +67,7 @@ export const getRequirements = async (req, res) => {
   try {
     // Pagination & Filters
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 100;
     const skip = (page - 1) * limit;
 
     const query = { status: 'published' };
@@ -100,7 +100,8 @@ export const getRequirements = async (req, res) => {
     const processedRequirements = requirements.map(reqData => {
       // Reformat populated company
       const company_name = reqData.company_id?.name;
-      const formattedReq = { ...reqData, company_name };
+      const id = reqData.id || reqData._id?.toString();
+      const formattedReq = { ...reqData, company_name, id };
       // Map company_id back to ID only if desired to keep shape similar
       formattedReq.company_id = reqData.company_id?.id || reqData.company_id?._id;
 
@@ -217,6 +218,37 @@ export const updateRequirement = async (req, res) => {
   }
 };
 
+// @desc    Update requirement status
+// @route   PATCH /api/requirements/:id/status
+// @access  Private (Company Owner)
+export const updateRequirementStatus = async (req, res) => {
+  try {
+    const requirement = await Requirement.findById(req.params.id);
+    
+    if (!requirement) {
+      return res.status(404).json({ message: 'Requirement not found' });
+    }
+
+    if (requirement.company_id.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to update this requirement' });
+    }
+
+    const { status } = req.body;
+    
+    if (!['draft', 'published', 'closed'].includes(status)) {
+       return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    requirement.status = status;
+    await requirement.save();
+
+    res.json({ message: 'Requirement status updated successfully', requirement });
+  } catch (error) {
+    console.error('Update requirement status error:', error);
+    res.status(500).json({ message: 'Server error updating requirement status' });
+  }
+};
+
 // @desc    Delete requirement
 // @route   DELETE /api/requirements/:id
 // @access  Private (Company Owner or Admin)
@@ -258,7 +290,8 @@ export const getMyRequirements = async (req, res) => {
     const formattedRequirements = requirements.map(reqData => {
       const company_name = reqData.company_id?.name;
       const company_id = reqData.company_id?.id || reqData.company_id?._id;
-      return { ...reqData, company_name, company_id };
+      const id = reqData.id || reqData._id?.toString();
+      return { ...reqData, company_name, company_id, id };
     });
 
     res.json({ data: formattedRequirements });

@@ -10,21 +10,29 @@
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif tracking-wide;
+    @apply font-serif tracking-wide text-brand-navy;
   }
 }
 
 @layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-primary-gradient text-white font-medium rounded-lg hover:shadow-[0_0_15px_rgba(169,11,74,0.4)] transition-all duration-300 transform hover:-translate-y-0.5;
+  }
+  
+  .btn-primary-outline {
+    @apply px-6 py-3 border border-brand-primary text-brand-primary font-medium rounded-lg hover:bg-brand-primary/10 transition-all duration-300;
+  }
+
   .btn-gold {
     @apply px-6 py-3 bg-gold-gradient text-white font-medium rounded-lg hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] transition-all duration-300 transform hover:-translate-y-0.5;
   }
   
-  .btn-outline {
+  .btn-gold-outline {
     @apply px-6 py-3 border border-brand-gold text-brand-gold font-medium rounded-lg hover:bg-brand-gold/10 transition-all duration-300;
   }
 
   .glass-card {
-    @apply bg-brand-card/90 backdrop-blur-md border border-gray-200 shadow-lg;
+    @apply bg-brand-card/95 backdrop-blur-md border border-gray-100 shadow-xl rounded-xl;
   }
 }
 

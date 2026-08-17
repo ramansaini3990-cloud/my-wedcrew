@@ -6,6 +6,8 @@ import requirementRoutes from './routes/requirementRoutes.js';
 import freelancerRoutes from './routes/freelancerRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 import bookingRequestRoutes from './routes/bookingRequestRoutes.js';
+import adminSubscriptionRoutes from './routes/adminSubscriptionRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 
 const app = express();
 
@@ -22,10 +24,12 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminSubscriptionRoutes); // mounts at /api/admin/subscriptions and /api/admin/plans
 app.use('/api/requirements', requirementRoutes);
 app.use('/api/freelancer', freelancerRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/booking-requests', bookingRequestRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Base route
 app.get('/', (req, res) => {

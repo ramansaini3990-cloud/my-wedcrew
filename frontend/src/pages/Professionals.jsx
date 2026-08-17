@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { Camera, MapPin, Calendar, Star, X } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
@@ -14,8 +15,10 @@ const categories = [
 
 const Professionals = () => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [professionals, setProfessionals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [chatLoading, setChatLoading] = useState(false);
   const [filters, setFilters] = useState({
     city: '',
     profession: ''
@@ -58,13 +61,33 @@ const Professionals = () => {
     setIsModalOpen(true);
   };
 
+  const handleStartChat = async (pro) => {
+    setChatLoading(true);
+    try {
+      const payload = {
+        company_id: user.id || user._id,
+        freelancer_id: pro.id || pro._id,
+      };
+      
+      const response = await api.post('/api/chat/conversations', payload);
+      const conversationId = response.data.data ? response.data.data.id || response.data.data._id : response.data.id || response.data._id;
+      
+      navigate('/messages', { state: { activeConversationId: conversationId } });
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+      alert(error.response?.data?.message || 'Failed to start chat.');
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   const submitBookingRequest = async () => {
     if (!message.trim()) return alert("Please enter a message");
     
     setRequestLoading(true);
     try {
       await api.post('/api/booking-requests', {
-        freelancer_id: selectedPro.id,
+        freelancer_id: selectedPro.id || selectedPro._id,
         message: message
       });
       alert('Booking request sent successfully!');
@@ -157,16 +180,34 @@ const Professionals = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-200 flex gap-2">
-                  <button className="flex-1 py-2.5 bg-brand-gold/10 text-brand-gold font-medium rounded-xl hover:bg-brand-gold hover:text-brand-bg transition-colors flex items-center justify-center gap-2">
-                    View Profile
-                  </button>
+                <div className="pt-4 border-t border-gray-200 flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <button className="flex-1 py-2.5 bg-brand-gold/10 text-brand-gold font-medium rounded-xl hover:bg-brand-gold hover:text-brand-bg transition-colors flex items-center justify-center gap-2">
+                      View Profile
+                    </button>
+                    {user?.role === 'company' && (
+                      <button 
+                        onClick={() => handleRequestBooking(pro)}
+                        className="flex-1 py-2.5 bg-brand-gold text-brand-bg font-bold rounded-xl hover:bg-brand-goldLight transition-colors flex items-center justify-center gap-2"
+                      >
+                        Request Booking
+                      </button>
+                    )}
+                  </div>
                   {user?.role === 'company' && (
                     <button 
-                      onClick={() => handleRequestBooking(pro)}
-                      className="flex-1 py-2.5 bg-brand-gold text-brand-bg font-bold rounded-xl hover:bg-brand-goldLight transition-colors flex items-center justify-center gap-2"
+                      onClick={() => handleStartChat(pro)}
+                      disabled={chatLoading}
+                      className="w-full py-2.5 bg-[#C5A880] text-white font-medium rounded-xl hover:bg-[#C5A880]/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      Request Booking
+                      {chatLoading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                          Start Chat
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
@@ -207,7 +248,7 @@ const Professionals = () => {
               <button 
                 onClick={submitBookingRequest}
                 disabled={requestLoading}
-                className="w-full btn-primary py-3 flex items-center justify-center"
+                className="w-full py-3 bg-brand-gold text-brand-bg font-bold rounded-xl hover:bg-brand-goldLight transition-colors flex items-center justify-center"
               >
                 {requestLoading ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-bg"></div>

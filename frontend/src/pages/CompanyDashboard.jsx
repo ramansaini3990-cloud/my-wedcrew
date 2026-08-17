@@ -28,9 +28,8 @@ export default function CompanyDashboard() {
   const handleDeactivate = async (item) => {
     if (window.confirm('Are you sure you want to deactivate this requirement? It will no longer be visible on the platform.')) {
       try {
-        const updatedItem = { ...item, status: 'closed' };
-        await api.put(`/api/requirements/${item.id}`, updatedItem);
-        setMyRequirements(myRequirements.map(req => req.id === item.id ? updatedItem : req));
+        await api.patch(`/api/requirements/${item.id}/status`, { status: 'closed' });
+        setMyRequirements(myRequirements.map(req => req.id === item.id ? { ...req, status: 'closed' } : req));
       } catch (error) {
         console.error('Error deactivating requirement:', error);
         alert('Failed to deactivate requirement');
@@ -41,9 +40,8 @@ export default function CompanyDashboard() {
   const handleReactivate = async (item) => {
     if (window.confirm('Are you sure you want to reactivate this requirement? It will be visible on the platform again.')) {
       try {
-        const updatedItem = { ...item, status: 'published' };
-        await api.put(`/api/requirements/${item.id}`, updatedItem);
-        setMyRequirements(myRequirements.map(req => req.id === item.id ? updatedItem : req));
+        await api.patch(`/api/requirements/${item.id}/status`, { status: 'published' });
+        setMyRequirements(myRequirements.map(req => req.id === item.id ? { ...req, status: 'published' } : req));
       } catch (error) {
         console.error('Error reactivating requirement:', error);
         alert('Failed to reactivate requirement');
@@ -61,181 +59,303 @@ export default function CompanyDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-brand-bg text-brand-text pt-24 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Dashboard Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <div className="h-24 w-24 rounded-2xl bg-brand-card border-2 border-brand-gold flex items-center justify-center text-3xl font-serif text-brand-gold shadow-[0_0_20px_rgba(212,175,55,0.2)]">
-                <Building2 size={40} />
-              </div>
-              <div className="absolute -bottom-2 -right-2 bg-brand-gold text-brand-bg text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider">
-                Studio
-              </div>
-            </div>
-            <div>
-              <h1 className="text-3xl font-serif font-bold text-brand-text mb-1">
-                {user?.name || 'Company Studio'}
-              </h1>
-              <p className="text-brand-gold text-sm tracking-widest uppercase">Verified Production House • Delhi</p>
-            </div>
+    <div className="min-h-screen bg-brand-bg flex flex-col lg:flex-row pt-20">
+      {/* Mobile Header Dashboard Summary (visible only on small screens) */}
+      <div className="lg:hidden bg-brand-surface border-b border-gray-200 px-4 py-6">
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 rounded-xl bg-brand-bg border border-brand-gold flex items-center justify-center text-brand-primary">
+            <Building2 size={28} />
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          
-          {/* Sidebar Navigation */}
-          <div className="lg:col-span-1 space-y-2">
-            <Link 
-              to="/company/requirements/new" 
-              className="w-full flex items-center justify-between p-4 rounded-xl transition-all duration-300 bg-brand-card/50 border border-gray-200 text-brand-textSec hover:bg-brand-card hover:text-brand-text mb-2"
-            >
-              <div className="flex items-center gap-3 font-medium text-sm">
-                <PlusCircle size={18} className="text-brand-textSec" />
-                Post Requirement
-              </div>
-            </Link>
-            
-            {[
-              { id: 'overview', label: 'Studio Overview', icon: Building2 },
-              { id: 'requirements', label: 'Manage Requirements', icon: ListTodo },
-              { id: 'search', label: 'Find Crew', icon: Search },
-              { id: 'favorites', label: 'Saved Professionals', icon: Star },
-              { id: 'notifications', label: 'Notifications', icon: Bell },
-              { id: 'settings', label: 'Company Settings', icon: Settings },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center justify-between p-4 rounded-xl transition-all duration-300 ${
-                  activeTab === tab.id 
-                    ? 'bg-brand-gold/10 border border-brand-gold text-brand-gold shadow-sm' 
-                    : 'bg-brand-card/50 border border-gray-200 text-brand-textSec hover:bg-brand-card hover:text-brand-text'
-                }`}
-              >
-                <div className="flex items-center gap-3 font-medium text-sm">
-                  <tab.icon size={18} className={activeTab === tab.id ? 'text-brand-gold' : 'text-brand-textSec'} />
-                  {tab.label}
-                </div>
-                {activeTab === tab.id && <ChevronRight size={16} />}
-              </button>
-            ))}
-            
-            <button 
-              onClick={logout}
-              className="w-full flex items-center gap-3 p-4 rounded-xl text-brand-danger hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-colors mt-8 font-medium text-sm"
-            >
-              <LogOut size={18} /> Logout
-            </button>
-          </div>
-
-          {/* Main Content Area */}
-          <div className="lg:col-span-3 space-y-8">
-            
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {stats.map((stat, i) => (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  key={i} 
-                  className="glass-card p-5 rounded-2xl relative overflow-hidden group hover:border-brand-gold/30 transition-colors"
-                >
-                  <div className="absolute top-0 right-0 -mt-2 -mr-2 p-4 bg-brand-gold/5 rounded-bl-full group-hover:bg-brand-gold/10 transition-colors">
-                    <stat.icon size={20} className="text-brand-gold opacity-80" />
-                  </div>
-                  <p className="text-xs text-brand-textSec font-medium uppercase tracking-wider mb-2">{stat.label}</p>
-                  <h3 className="text-3xl font-serif text-brand-text">{stat.value}</h3>
-                  <p className="text-xs text-brand-textSec mt-2 font-medium">{stat.trend}</p>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Active Requirements */}
-            <div className="glass-card rounded-2xl border border-gray-200 overflow-hidden">
-              <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-brand-card/30">
-                <h3 className="text-lg font-serif font-bold text-brand-text">Active Requirements</h3>
-                <button className="text-brand-gold text-sm hover:text-brand-goldLight transition-colors font-medium tracking-wide">View All</button>
-              </div>
-              
-              <div className="divide-y divide-white/5">
-                {loading ? (
-                  <div className="p-6 text-center text-brand-textSec">Loading...</div>
-                ) : myRequirements.length === 0 ? (
-                  <div className="p-6 text-center text-brand-textSec">No requirements posted yet.</div>
-                ) : (
-                  myRequirements.map((item) => (
-                    <div key={item.id} className="p-6 hover:bg-white/[0.02] transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="px-2 py-1 bg-brand-gold/20 text-brand-gold rounded text-xs font-bold uppercase tracking-wider">{item.category}</span>
-                          <span className="px-2 py-1 bg-white/10 text-brand-text rounded text-xs font-medium">{item.city}</span>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${item.status === 'published' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                            {item.status}
-                          </span>
-                        </div>
-                        <h4 className="text-brand-text font-serif text-xl mb-1">
-                          {item.event_type ? `${item.event_type} - ` : ''}
-                          {item.description ? item.description.substring(0, 50) + (item.description.length > 50 ? '...' : '') : 'Need ' + item.category}
-                        </h4>
-                        <p className="text-sm text-brand-textSec">
-                          {new Date(item.event_date).toLocaleDateString()} • Budget: ₹{item.payment_per_freelancer} / freelancer • Qty: {item.quantity}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4 w-full sm:w-auto">
-                        <div className="text-center px-4">
-                          <p className="text-2xl font-bold text-brand-text">{item.applications_count || 0}</p>
-                          <p className="text-xs text-brand-textSec uppercase">Proposals</p>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2 flex-1 sm:flex-none">
-                          <button className="flex-1 sm:flex-none btn-outline py-2 px-6">
-                            Review
-                          </button>
-                          {item.status !== 'closed' ? (
-                            <button 
-                              onClick={() => handleDeactivate(item)}
-                              className="flex-1 sm:flex-none py-2 px-4 border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
-                            >
-                              Deactivate
-                            </button>
-                          ) : (
-                            <button 
-                              onClick={() => handleReactivate(item)}
-                              className="flex-1 sm:flex-none py-2 px-4 border border-green-500/30 text-green-400 hover:bg-green-500/10 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
-                            >
-                              Reactivate
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Premium CTA */}
-            <div className="p-8 rounded-2xl bg-brand-card border border-gray-200 relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gold-gradient opacity-0 group-hover:opacity-5 transition-opacity duration-500"></div>
-              <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div>
-                  <h3 className="text-2xl font-serif text-brand-text mb-2 flex items-center gap-2">
-                    <Crown className="text-brand-gold" size={24} /> WedCrew Studio Enterprise
-                  </h3>
-                  <p className="text-brand-textSec max-w-md">
-                    Need to hire 10+ crew members for a mega production? Get dedicated account management and bulk hiring discounts.
-                  </p>
-                </div>
-                <button className="btn-gold shrink-0 whitespace-nowrap">Contact Enterprise</button>
-              </div>
-            </div>
-
+          <div>
+            <h1 className="text-2xl font-serif font-bold text-brand-navy">
+              {user?.name || 'Company Studio'}
+            </h1>
+            <p className="text-brand-primary text-xs tracking-widest uppercase">
+              Verified Production House
+            </p>
           </div>
         </div>
       </div>
+
+      {/* Sidebar Navigation */}
+      <aside className="w-full lg:w-72 lg:fixed lg:h-[calc(100vh-5rem)] bg-brand-surface border-r border-gray-200 overflow-y-auto custom-scrollbar flex flex-col">
+        <div className="p-6 hidden lg:block border-b border-gray-100">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 rounded-xl bg-brand-bg border border-brand-gold flex items-center justify-center text-brand-primary shadow-sm relative">
+              <Building2 size={28} />
+              <div className="absolute -bottom-2 -right-2 bg-brand-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                PRO
+              </div>
+            </div>
+            <div>
+              <h1 className="text-xl font-serif font-bold text-brand-navy line-clamp-1">
+                {user?.name || 'Company Studio'}
+              </h1>
+              <p className="text-brand-primary text-xs tracking-widest uppercase">
+                Production House
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-4 border-b border-gray-100">
+          <Link 
+            to="/company/requirements/new" 
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-all font-medium text-sm shadow-sm"
+          >
+            <PlusCircle size={18} />
+            Post Requirement
+          </Link>
+        </div>
+
+        <nav className="p-4 flex-1 space-y-1">
+          {[
+            { id: 'overview', label: 'Studio Overview', icon: Building2 },
+            { id: 'requirements', label: 'Manage Requirements', icon: ListTodo },
+            { id: 'messages', label: 'Messages', icon: ListTodo, path: '/messages' },
+            { id: 'search', label: 'Find Crew', icon: Search },
+            { id: 'favorites', label: 'Saved Professionals', icon: Star },
+            { id: 'notifications', label: 'Notifications', icon: Bell },
+            { id: 'settings', label: 'Company Settings', icon: Settings },
+          ].map((tab) => (
+            tab.path ? (
+              <Link
+                key={tab.id}
+                to={tab.path}
+                className="w-full flex items-center px-4 py-3 rounded-lg transition-all duration-200 text-brand-textSec hover:bg-gray-50 hover:text-brand-navy"
+              >
+                <div className="flex items-center gap-3 text-sm">
+                  <tab.icon size={18} className="text-brand-textSec" />
+                  {tab.label}
+                </div>
+              </Link>
+            ) : (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full flex items-center px-4 py-3 rounded-lg transition-all duration-200 ${
+                  activeTab === tab.id 
+                    ? 'bg-brand-primary/5 text-brand-primary font-medium' 
+                    : 'text-brand-textSec hover:bg-gray-50 hover:text-brand-navy'
+                }`}
+              >
+                <div className="flex items-center gap-3 text-sm">
+                  <tab.icon size={18} className={activeTab === tab.id ? 'text-brand-primary' : 'text-brand-textSec'} />
+                  {tab.label}
+                </div>
+              </button>
+            )
+          ))}
+        </nav>
+        
+        <div className="p-4 border-t border-gray-100">
+          <button 
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-brand-textSec hover:bg-red-50 hover:text-brand-danger transition-colors text-sm font-medium"
+          >
+            <LogOut size={18} /> Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 lg:ml-72 min-h-screen bg-brand-bg pb-12">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10 space-y-8">
+          
+          {activeTab === 'overview' && (
+            <div className="animate-fade-in space-y-8">
+              <div className="mb-6">
+                <h2 className="text-2xl font-serif font-bold text-brand-navy">Studio Overview</h2>
+                <p className="text-brand-textSec text-sm mt-1">Manage your active shoots, crews, and postings.</p>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {stats.map((stat, i) => (
+                  <div key={i} className="bg-brand-surface p-6 rounded-xl border border-gray-200 shadow-sm hover:border-brand-primary/30 transition-all group">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="p-2.5 bg-brand-primary/5 rounded-lg group-hover:bg-brand-primary/10 transition-colors">
+                        <stat.icon size={20} className="text-brand-primary" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-3xl font-serif text-brand-navy mb-1">{stat.value}</h3>
+                      <p className="text-xs text-brand-textSec font-medium uppercase tracking-wider">{stat.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Active Requirements List Summary */}
+              <div className="bg-brand-surface rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-brand-bg/50">
+                  <h3 className="text-lg font-serif font-bold text-brand-navy">Recent Postings</h3>
+                  <button 
+                    onClick={() => setActiveTab('requirements')}
+                    className="text-brand-primary text-sm hover:text-brand-primaryLight transition-colors font-medium"
+                  >
+                    View All
+                  </button>
+                </div>
+                
+                <div className="divide-y divide-gray-100">
+                  {loading ? (
+                    <div className="p-8 text-center text-brand-textSec">Loading...</div>
+                  ) : myRequirements.length === 0 ? (
+                    <div className="p-12 text-center text-brand-textSec">No requirements posted yet.</div>
+                  ) : (
+                    myRequirements.slice(0, 3).map((item) => (
+                      <div key={item.id} className="p-6 hover:bg-gray-50/50 transition-colors flex justify-between items-center">
+                        <div>
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className="text-brand-primary text-[10px] font-bold uppercase tracking-wider bg-brand-primary/10 px-2 py-0.5 rounded">
+                              {item.category}
+                            </span>
+                            <span className="text-brand-textSec text-xs font-medium">{item.city}</span>
+                          </div>
+                          <h4 className="text-brand-navy font-bold">{item.description ? item.description.substring(0, 50) + '...' : 'Need ' + item.category}</h4>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-brand-navy font-bold">{item.applications_count || 0}</p>
+                          <p className="text-[10px] text-brand-textSec uppercase tracking-wider">Proposals</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Premium CTA */}
+              <div className="p-8 rounded-xl bg-brand-surface border border-brand-primary/20 shadow-sm relative overflow-hidden group">
+                <div className="absolute inset-0 bg-primary-gradient opacity-5 transition-opacity duration-500"></div>
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div>
+                    <h3 className="text-2xl font-serif text-brand-navy mb-2 flex items-center gap-2">
+                      <Crown className="text-brand-primary" size={24} /> WedCrew Studio Enterprise
+                    </h3>
+                    <p className="text-brand-textSec text-sm max-w-md leading-relaxed">
+                      Need to hire 10+ crew members for a mega production? Get dedicated account management and bulk hiring discounts.
+                    </p>
+                  </div>
+                  <button className="px-6 py-3 bg-brand-primary text-white font-medium rounded-lg hover:bg-brand-primaryLight transition-all shadow-sm shrink-0 whitespace-nowrap">
+                    Contact Enterprise
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'requirements' && (
+            <div className="animate-fade-in space-y-6">
+              <div className="mb-6 flex justify-between items-end">
+                <div>
+                  <h2 className="text-2xl font-serif font-bold text-brand-navy">Manage Requirements</h2>
+                  <p className="text-brand-textSec text-sm mt-1">Review proposals and manage your active job postings.</p>
+                </div>
+                <Link 
+                  to="/company/requirements/new" 
+                  className="hidden md:flex px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-all font-medium text-sm items-center gap-2"
+                >
+                  <PlusCircle size={16} /> New Post
+                </Link>
+              </div>
+
+              <div className="bg-brand-surface rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="divide-y divide-gray-100">
+                  {loading ? (
+                    <div className="p-12 text-center text-brand-textSec">Loading...</div>
+                  ) : myRequirements.length === 0 ? (
+                    <div className="p-16 text-center flex flex-col items-center justify-center">
+                      <ListTodo className="text-brand-textSec/30 mb-4" size={48} />
+                      <p className="text-brand-navy font-bold text-lg mb-1">No requirements posted</p>
+                      <p className="text-sm text-brand-textSec mb-6">Create a job post to start receiving proposals from professionals.</p>
+                      <Link 
+                        to="/company/requirements/new" 
+                        className="px-6 py-2.5 bg-brand-primary text-white rounded-lg hover:bg-brand-primaryLight transition-all font-medium text-sm"
+                      >
+                        Post Your First Requirement
+                      </Link>
+                    </div>
+                  ) : (
+                    myRequirements.map((item) => (
+                      <div key={item.id} className="p-6 md:p-8 hover:bg-gray-50/50 transition-colors flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                        <div className="flex-1 space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="px-2.5 py-1 bg-brand-primary/10 text-brand-primary rounded-md text-[10px] font-bold uppercase tracking-wider">
+                              {item.category}
+                            </span>
+                            <span className="px-2.5 py-1 bg-gray-100 text-brand-textSec rounded-md text-xs font-medium">
+                              {item.city}
+                            </span>
+                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                              item.status === 'published' ? 'bg-green-100 text-green-700' : 
+                              item.status === 'closed' ? 'bg-red-100 text-red-700' : 
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {item.status === 'closed' ? 'deactivated' : item.status}
+                            </span>
+                          </div>
+                          <h4 className="text-brand-navy font-serif text-xl font-bold">
+                            {item.event_type ? `${item.event_type} - ` : ''}
+                            {item.description ? item.description.substring(0, 80) + (item.description.length > 80 ? '...' : '') : 'Need ' + item.category}
+                          </h4>
+                          <p className="text-sm text-brand-textSec flex items-center gap-4">
+                            <span>📅 {new Date(item.event_date).toLocaleDateString()}</span>
+                            <span>💰 ₹{item.payment_per_freelancer} / person</span>
+                            <span>👥 Need {item.quantity}</span>
+                          </p>
+                        </div>
+                        
+                        <div className="flex flex-col sm:flex-row items-center gap-6 w-full lg:w-auto p-4 lg:p-0 bg-gray-50 lg:bg-transparent rounded-lg border border-gray-100 lg:border-none">
+                          <div className="text-center">
+                            <p className="text-3xl font-serif text-brand-navy mb-1">{item.applications_count || 0}</p>
+                            <p className="text-[10px] text-brand-textSec font-bold uppercase tracking-wider">Proposals</p>
+                          </div>
+                          
+                          <div className="w-px h-12 bg-gray-200 hidden sm:block"></div>
+                          
+                          <div className="flex flex-col gap-2 w-full sm:w-auto">
+                            <button className="w-full sm:w-auto px-6 py-2 bg-brand-navy text-white hover:bg-brand-navy/90 rounded-lg text-sm font-medium transition-colors">
+                              Review
+                            </button>
+                            {item.status !== 'closed' ? (
+                              <button 
+                                onClick={() => handleDeactivate(item)}
+                                className="w-full sm:w-auto px-6 py-2 bg-white border border-gray-200 text-brand-danger hover:bg-red-50 hover:border-red-200 rounded-lg text-sm font-medium transition-colors"
+                              >
+                                Deactivate
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={() => handleReactivate(item)}
+                                className="w-full sm:w-auto px-6 py-2 bg-white border border-gray-200 text-green-600 hover:bg-green-50 hover:border-green-200 rounded-lg text-sm font-medium transition-colors"
+                              >
+                                Reactivate
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Fallback for other tabs not explicitly implemented but handled elegantly */}
+          {['search', 'favorites', 'notifications', 'settings'].includes(activeTab) && (
+            <div className="animate-fade-in flex flex-col items-center justify-center p-12 bg-brand-surface rounded-xl border border-gray-200">
+              <div className="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                <Settings className="text-brand-textSec/50" size={32} />
+              </div>
+              <h2 className="text-xl font-serif font-bold text-brand-navy mb-2 capitalize">{activeTab}</h2>
+              <p className="text-brand-textSec text-sm text-center max-w-md">This module is currently being updated to match the new premium experience. Check back soon.</p>
+            </div>
+          )}
+
+        </div>
+      </main>
     </div>
   );
 }

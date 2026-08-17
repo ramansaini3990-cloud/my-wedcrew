@@ -5,7 +5,8 @@ import {
   getRequirementById,
   updateRequirement,
   deleteRequirement,
-  getMyRequirements
+  getMyRequirements,
+  updateRequirementStatus
 } from '../controllers/requirementController.js';
 import { protect, optionalAuth } from '../middleware/authMiddleware.js';
 
@@ -23,5 +24,8 @@ router.route('/:id')
   .get(optionalAuth, getRequirementById)
   .put(protect, updateRequirement)
   .delete(protect, deleteRequirement);
+
+router.route('/:id/status')
+  .patch(protect, updateRequirementStatus);
 
 export default router;

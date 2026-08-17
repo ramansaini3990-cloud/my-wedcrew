@@ -15,13 +15,18 @@ export const createBookingRequest = async (req, res) => {
       return res.status(400).json({ message: 'Freelancer ID is required' });
     }
 
-    const bookingRequest = await BookingRequest.create({
+    const bookingData = {
       company_id: req.user.id,
       freelancer_id,
-      requirement_id: requirement_id || null,
-      message: message || null,
+      message: message || undefined,
       status: 'pending'
-    });
+    };
+
+    if (requirement_id) {
+      bookingData.requirement_id = requirement_id;
+    }
+
+    const bookingRequest = await BookingRequest.create(bookingData);
 
     res.status(201).json({
       message: 'Booking request sent successfully',
@@ -51,6 +56,7 @@ export const getFreelancerBookingRequests = async (req, res) => {
     // Format output to match old SQL mapping
     const formattedRequests = requests.map(reqData => ({
       ...reqData,
+      id: reqData._id || reqData.id,
       company_name: reqData.company_id?.name,
       requirement_category: reqData.requirement_id?.category,
       requirement_city: reqData.requirement_id?.city,
