@@ -27,7 +27,6 @@ const Professionals = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPro, setSelectedPro] = useState(null);
-  const [message, setMessage] = useState('');
   const [requestLoading, setRequestLoading] = useState(false);
 
   const fetchProfessionals = async () => {
@@ -57,7 +56,6 @@ const Professionals = () => {
 
   const handleRequestBooking = (pro) => {
     setSelectedPro(pro);
-    setMessage('');
     setIsModalOpen(true);
   };
 
@@ -82,13 +80,10 @@ const Professionals = () => {
   };
 
   const submitBookingRequest = async () => {
-    if (!message.trim()) return alert("Please enter a message");
-    
     setRequestLoading(true);
     try {
       await api.post('/api/booking-requests', {
-        freelancer_id: selectedPro.id || selectedPro._id,
-        message: message
+        freelancer_id: selectedPro.id || selectedPro._id
       });
       alert('Booking request sent successfully!');
       setIsModalOpen(false);
@@ -235,14 +230,9 @@ const Professionals = () => {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-brand-textSec mb-1">Message</label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Describe your event, dates, and requirements..."
-                  rows="4"
-                  className="w-full bg-brand-bg border border-gray-200 rounded-xl px-4 py-3 text-brand-text focus:outline-none focus:border-brand-gold custom-scrollbar"
-                ></textarea>
+                <p className="w-full bg-brand-primary/5 border border-brand-primary/20 rounded-xl px-4 py-4 text-brand-navy font-medium italic text-sm">
+                  "Hi, we’re interested in connecting with you for a booking. Please review our request and respond if you’re available."
+                </p>
               </div>
               
               <button 

@@ -286,6 +286,8 @@ export const getMyRequirements = async (req, res) => {
       .populate('company_id', 'name')
       .sort({ created_at: -1 })
       .lean({ virtuals: true });
+    
+    console.log(`[getMyRequirements] found ${requirements.length} for user ${req.user.id}`);
 
     const formattedRequirements = requirements.map(reqData => {
       const company_name = reqData.company_id?.name;

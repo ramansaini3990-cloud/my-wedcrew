@@ -13,6 +13,7 @@ const Messages = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [error, setError] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
   const messagesEndRef = useRef(null);
   const [initialSelectDone, setInitialSelectDone] = useState(false);
 
@@ -65,14 +66,58 @@ const Messages = () => {
       const res = await axios.get('http://localhost:5000/api/chat/conversations', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setConversations(res.data);
+      
+      const getValidId = (obj) => {
+        if (!obj) return null;
+        if (typeof obj === 'string') return obj;
+        if (typeof obj === 'object') return String(obj._id || obj.id || '');
+        return String(obj);
+      };
+
+      const userIdStr = String(user.id || user._id);
+      
+      // Deduplicate based on the other user's ID
+      const uniqueChatsMap = new Map();
+      
+      res.data.forEach(conv => {
+        const companyId = getValidId(conv.company_id);
+        const freelancerId = getValidId(conv.freelancer_id);
+        
+        let otherUserId = null;
+        if (companyId === userIdStr) {
+          otherUserId = freelancerId;
+        } else {
+          otherUserId = companyId;
+        }
+
+        // Only add if we haven't seen this user, OR if this conversation has a newer last_message_at
+        if (otherUserId) {
+          if (!uniqueChatsMap.has(otherUserId)) {
+            uniqueChatsMap.set(otherUserId, conv);
+          } else {
+            const existingConv = uniqueChatsMap.get(otherUserId);
+            const existingDate = existingConv.last_message_at ? new Date(existingConv.last_message_at) : new Date(0);
+            const newDate = conv.last_message_at ? new Date(conv.last_message_at) : new Date(0);
+            if (newDate > existingDate) {
+               uniqueChatsMap.set(otherUserId, conv);
+            }
+          }
+        }
+      });
+
+      setConversations(Array.from(uniqueChatsMap.values()));
     } catch (err) {
       console.error(err);
-      setError('Failed to load conversations.');
+      if (err.response?.status === 403 && err.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+        setIsLocked(true);
+      } else {
+        setError('Failed to load conversations.');
+      }
     }
   };
 
   const selectConversation = async (conv) => {
+    setIsLocked(false);
     setActiveConv(conv);
     const convId = conv.id || conv._id;
     if (socket) {
@@ -86,6 +131,9 @@ const Messages = () => {
       scrollToBottom();
     } catch (err) {
       console.error(err);
+      if (err.response?.status === 403 && err.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+        setIsLocked(true);
+      }
     }
   };
 
@@ -95,20 +143,29 @@ const Messages = () => {
 
     const convId = activeConv.id || activeConv._id;
     
-    const extractId = (obj) => {
+    const getValidId = (obj) => {
       if (!obj) return null;
-      if (typeof obj === 'object') return String(obj._id || obj.id || '');
+      if (typeof obj === 'string') return obj;
+      if (typeof obj === 'object') {
+        const id = obj._id || obj.id;
+        if (id) return String(id);
+      }
       return String(obj);
     };
 
     let receiverId = null;
-    const userIdStr = String(user.id || user._id);
-    const companyIdStr = extractId(activeConv.company_id);
+    const userIdStr = getValidId(user);
+    const companyIdStr = getValidId(activeConv.company_id);
     
     if (companyIdStr === userIdStr) {
-      receiverId = extractId(activeConv.freelancer_id);
+      receiverId = getValidId(activeConv.freelancer_id);
     } else {
-      receiverId = extractId(activeConv.company_id);
+      receiverId = getValidId(activeConv.company_id);
+    }
+
+    if (!receiverId || typeof receiverId !== 'string') {
+       setError('Failed to identify message receiver.');
+       return;
     }
     
     socket.emit('send_message', {
@@ -200,7 +257,23 @@ const Messages = () => {
 
         {/* Chat Area */}
         <div className="flex-1 flex flex-col bg-[#F9FAFB] relative min-w-0">
-          {activeConv ? (
+          {isLocked ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8">
+              <div className="w-16 h-16 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm mb-6">
+                <span className="text-2xl">🔒</span>
+              </div>
+              <h3 className="text-xl font-bold text-brand-navy mb-2">Messages Locked</h3>
+              <p className="text-brand-textSec text-center max-w-md mb-6">
+                An active subscription is required for both users to access chat.
+              </p>
+              <button 
+                onClick={() => window.location.href = '/pricing'}
+                className="px-6 py-2.5 bg-brand-primary text-white rounded-full font-medium hover:bg-brand-primaryLight transition-all shadow-sm"
+              >
+                View Plans / Subscribe
+              </button>
+            </div>
+          ) : activeConv ? (
             <>
               {/* Chat Header */}
               <div className="h-[60px] px-6 border-b border-gray-200 bg-white flex items-center shadow-sm z-10 flex-shrink-0">

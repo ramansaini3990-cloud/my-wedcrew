@@ -8,6 +8,8 @@ import publicRoutes from './routes/publicRoutes.js';
 import bookingRequestRoutes from './routes/bookingRequestRoutes.js';
 import adminSubscriptionRoutes from './routes/adminSubscriptionRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import applicationRoutes from './routes/applicationRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 const app = express();
 
@@ -30,6 +32,8 @@ app.use('/api/freelancer', freelancerRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/booking-requests', bookingRequestRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/applications', applicationRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Base route
 app.get('/', (req, res) => {

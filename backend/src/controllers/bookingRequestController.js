@@ -9,16 +9,23 @@ export const createBookingRequest = async (req, res) => {
       return res.status(403).json({ message: 'Only companies can send booking requests' });
     }
 
-    const { freelancer_id, requirement_id, message } = req.body;
+    const { freelancer_id, requirement_id } = req.body;
 
     if (!freelancer_id) {
       return res.status(400).json({ message: 'Freelancer ID is required' });
     }
 
+    const existingRequest = await BookingRequest.findOne({ company_id: req.user.id, freelancer_id, status: 'pending' });
+    if (existingRequest) {
+      return res.status(400).json({ message: 'A pending booking request already exists for this freelancer.' });
+    }
+
+    const fixedMessage = "Hi, we’re interested in connecting with you for a booking. Please review our request and respond if you’re available.";
+
     const bookingData = {
       company_id: req.user.id,
       freelancer_id,
-      message: message || undefined,
+      message: fixedMessage,
       status: 'pending'
     };
 
@@ -98,8 +105,47 @@ export const updateBookingRequestStatus = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this request' });
     }
 
+    if (bookingRequest.status === status) {
+      return res.json({ message: 'Booking request already ' + status });
+    }
+
     bookingRequest.status = status;
     await bookingRequest.save();
+
+    if (status === 'accepted') {
+      const Notification = (await import('../models/Notification.js')).default;
+      const User = (await import('../models/User.js')).default;
+      const Conversation = (await import('../models/Conversation.js')).default;
+      const { emitNotification } = await import('../socket.js');
+      
+      const freelancer = await User.findById(req.user.id);
+      const freelancerName = freelancer ? freelancer.name : 'A freelancer';
+      
+      let conversation = await Conversation.findOne({
+        company_id: bookingRequest.company_id,
+        freelancer_id: bookingRequest.freelancer_id
+      });
+
+      if (!conversation) {
+        conversation = new Conversation({
+          company_id: bookingRequest.company_id,
+          freelancer_id: bookingRequest.freelancer_id
+        });
+        await conversation.save();
+      }
+
+      const notification = new Notification({
+        recipient_id: bookingRequest.company_id,
+        recipient_role: 'company',
+        type: 'booking_request_accepted',
+        title: 'Booking Request Accepted',
+        message: `${freelancerName} accepted your booking request.`,
+        conversation_id: conversation._id,
+        sender_id: req.user.id
+      });
+      await notification.save();
+      emitNotification(bookingRequest.company_id, notification);
+    }
 
     res.json({ message: 'Booking request ' + status + ' successfully' });
   } catch (error) {

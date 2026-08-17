@@ -1,11 +1,16 @@
 import { useContext, useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import api from '../utils/api';
-import { Camera, Calendar, Star, IndianRupee, Bell, Briefcase, Settings, LogOut, ChevronRight } from 'lucide-react';
+import { Camera, Calendar, Star, IndianRupee, Bell, Briefcase, Settings, LogOut, ChevronRight, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
+import NotificationsView from '../components/NotificationsView';
 
 export default function FreelancerDashboard() {
   const { user, logout } = useContext(AuthContext);
+  const socket = useSocket();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   
   const [showModal, setShowModal] = useState(false);
@@ -17,11 +22,68 @@ export default function FreelancerDashboard() {
   const [bookingRequests, setBookingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [myApplications, setMyApplications] = useState([]);
+  const [loadingApps, setLoadingApps] = useState(false);
+
   const [dashboardData, setDashboardData] = useState(null);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('new_notification', (notification) => {
+        setUnreadNotifications(prev => prev + 1);
+        fetchMyApplications();
+      });
+      return () => {
+        socket.off('new_notification');
+      };
+    }
+  }, [socket]);
+
+  useEffect(() => {
     fetchData();
+    fetchUnreadNotifications();
+    fetchMyApplications();
   }, []);
+
+  const fetchUnreadNotifications = async () => {
+    try {
+      const res = await api.get('/api/notifications/unread-count');
+      setUnreadNotifications(res.data.count);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchMyApplications = async () => {
+    setLoadingApps(true);
+    try {
+      const res = await api.get('/api/applications/my');
+      setMyApplications(res.data.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingApps(false);
+    }
+  };
+
+  const handleStartChat = async (companyId, requirementId) => {
+    try {
+      const res = await api.post('/api/chat/conversations', {
+        company_id: companyId,
+        freelancer_id: user.id || user._id,
+        requirement_id: requirementId
+      });
+      navigate('/messages', { state: { selectedConversation: res.data } });
+    } catch (e) {
+      console.error(e);
+      alert('Failed to open chat.');
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -222,6 +284,7 @@ export default function FreelancerDashboard() {
           {[
             { id: 'overview', label: 'Overview', icon: Camera },
             { id: 'requests', label: 'Booking Requests', icon: Briefcase },
+            { id: 'applications', label: 'My Applications', icon: FileText },
             { id: 'messages', label: 'Messages', icon: Briefcase, path: '/messages' },
             { id: 'calendar', label: 'Availability', icon: Calendar },
             { id: 'earnings', label: 'Earnings', icon: IndianRupee },
@@ -229,33 +292,43 @@ export default function FreelancerDashboard() {
             { id: 'settings', label: 'Settings', icon: Settings },
           ].map((tab) => (
             tab.path ? (
-              <a
+              <Link
                 key={tab.id}
-                href={tab.path}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 text-brand-textSec hover:bg-gray-50 hover:text-brand-navy"
+                to={tab.path}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
+                  activeTab === tab.id ? 'bg-brand-primary text-white' : 'text-brand-textSec hover:bg-gray-50 hover:text-brand-navy'
+                }`}
               >
                 <div className="flex items-center gap-3 text-sm">
-                  <tab.icon size={18} className="text-brand-textSec" />
+                  <tab.icon size={18} className={activeTab === tab.id ? "text-white" : "text-brand-textSec"} />
                   {tab.label}
                 </div>
-              </a>
+                {tab.id === 'notifications' && unreadNotifications > 0 && (
+                  <span className="bg-brand-danger text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {unreadNotifications}
+                  </span>
+                )}
+              </Link>
             ) : (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
-                  activeTab === tab.id 
-                    ? 'bg-brand-primary/5 text-brand-primary font-medium' 
-                    : 'text-brand-textSec hover:bg-gray-50 hover:text-brand-navy'
+                  activeTab === tab.id ? 'bg-brand-primary text-white' : 'text-brand-textSec hover:bg-gray-50 hover:text-brand-navy'
                 }`}
               >
                 <div className="flex items-center gap-3 text-sm">
-                  <tab.icon size={18} className={activeTab === tab.id ? 'text-brand-primary' : 'text-brand-textSec'} />
+                  <tab.icon size={18} className={activeTab === tab.id ? "text-white" : "text-brand-textSec"} />
                   {tab.label}
                 </div>
                 {tab.id === 'requests' && pendingRequestsCount > 0 && (
                   <span className="bg-brand-gold text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                     {pendingRequestsCount}
+                  </span>
+                )}
+                {tab.id === 'notifications' && unreadNotifications > 0 && (
+                  <span className="bg-brand-danger text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {unreadNotifications}
                   </span>
                 )}
               </button>
@@ -620,6 +693,80 @@ export default function FreelancerDashboard() {
                     {isSaving ? 'Saving...' : 'Save Profile Changes'}
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'applications' && (
+            <div className="animate-fade-in space-y-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-serif font-bold text-brand-navy">My Applications</h2>
+                  <p className="text-brand-textSec mt-1">Track the status of requirements you've applied to</p>
+                </div>
+              </div>
+              
+              {loadingApps ? (
+                <div className="text-center py-12 text-brand-textSec">Loading applications...</div>
+              ) : myApplications.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-brand-textSec">
+                  You haven't applied to any requirements yet.
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {myApplications.map(app => (
+                    <div key={app.id} className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <h4 className="font-bold text-brand-navy text-lg">{app.requirement_id?.category || 'Requirement'}</h4>
+                        <p className="text-brand-textSec font-medium">{app.company_id?.name || 'Company'}</p>
+                        <div className="flex gap-4 mt-2 text-sm text-brand-textSec">
+                          <span>💰 {app.proposed_rate}</span>
+                          <span>📅 {app.availability}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col md:items-end gap-3 w-full md:w-auto">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider self-start md:self-end ${
+                          app.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                          app.status === 'shortlisted' ? 'bg-blue-100 text-blue-700' :
+                          app.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {app.status}
+                        </span>
+                        {app.status === 'accepted' && (
+                          <button 
+                            onClick={() => handleStartChat(app.company_id?._id || app.company_id?.id || app.company_id, app.requirement_id?._id || app.requirement_id?.id)}
+                            className="px-6 py-2 bg-brand-navy text-white hover:bg-brand-navy/90 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            Open Chat
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <div className="animate-fade-in space-y-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-serif font-bold text-brand-navy">Notifications</h2>
+                  <p className="text-brand-textSec mt-1">Stay updated with your latest applications and messages</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <NotificationsView 
+                  onNotificationClick={(notif) => {
+                    if (notif.application_id || notif.type.includes('application')) {
+                      setActiveTab('applications');
+                      fetchMyApplications();
+                      fetchUnreadNotifications();
+                    }
+                  }} 
+                />
               </div>
             </div>
           )}

@@ -39,14 +39,24 @@ export const initSocket = (server) => {
     socket.on('send_message', async (data, callback) => {
       try {
         const { conversationId, text, receiverId, messageType, message: messageText } = data;
-        const finalMessage = text || messageText;
         
         // Check feature access
-        const canChat = await hasFeature(socket.user.id || socket.user._id, 'chat');
-        if (!canChat) {
-          socket.emit('error', 'Active subscription required to send messages');
-          if (callback) callback({ error: 'Active subscription required to send messages' });
+        const conversation = await Conversation.findById(conversationId);
+        const companyHasChat = await hasFeature(conversation.company_id.toString(), 'chat');
+        const freelancerHasChat = await hasFeature(conversation.freelancer_id.toString(), 'chat');
+
+        if (!companyHasChat || !freelancerHasChat) {
+          if (callback) callback({ success: false, message: 'Active subscription required for both users' });
           return;
+        }
+
+        let finalMessage = text || messageText;
+        if (typeof finalMessage === 'object') {
+          if (finalMessage.text) {
+             finalMessage = finalMessage.text;
+          } else {
+             finalMessage = JSON.stringify(finalMessage);
+          }
         }
 
         const message = new Message({
@@ -64,13 +74,44 @@ export const initSocket = (server) => {
           last_message_at: new Date()
         });
 
-        // Emit to the conversation room
+        const User = (await import('./models/User.js')).default;
+        const Notification = (await import('./models/Notification.js')).default;
+
+        const receiverUser = await User.findById(receiverId);
+        let receiverIsLocked = false;
+        
+        if (receiverUser && receiverUser.role === 'company') {
+           const receiverHasChat = await hasFeature(receiverId, 'chat');
+           if (!receiverHasChat) {
+             receiverIsLocked = true;
+           }
+        }
+
+        // Emit to the conversation room. 
+        // Note: The unsubscribed receiver shouldn't even be in this room if they can't open the chat.
+        // But to be perfectly safe, we can emit directly to sender if receiver is locked, or just leave it.
+        // The sender definitely needs to receive it. 
         io.to(conversationId).emit('receive_message', message);
         
-        // Optionally emit a notification to the receiver if they are online but not in the room
-        const receiverSocketId = userSockets.get(receiverId);
-        if (receiverSocketId) {
-          io.to(receiverSocketId).emit('new_message_notification', message);
+        if (receiverIsLocked) {
+           const senderUser = await User.findById(socket.user.id || socket.user._id);
+           const notification = new Notification({
+             recipient_id: receiverId,
+             recipient_role: receiverUser.role,
+             type: 'locked_message',
+             title: `New message from ${senderUser.name}`,
+             message: 'Subscribe to view and reply.',
+             conversation_id: conversationId,
+             sender_id: senderUser._id,
+             subscription_required: true
+           });
+           await notification.save();
+           emitNotification(receiverId, notification);
+        } else {
+           const receiverSocketId = userSockets.get(receiverId);
+           if (receiverSocketId) {
+             io.to(receiverSocketId).emit('new_message_notification', message);
+           }
         }
 
         if (callback) callback({ success: true, message });
@@ -92,4 +133,13 @@ export const initSocket = (server) => {
 export const getIo = () => {
   if (!io) throw new Error('Socket.io not initialized!');
   return io;
+};
+
+export const emitNotification = (userId, notification) => {
+  if (!io) return;
+  const idStr = userId.toString();
+  const socketId = userSockets.get(idStr);
+  if (socketId) {
+    io.to(socketId).emit('new_notification', notification);
+  }
 };
