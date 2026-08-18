@@ -82,7 +82,7 @@ const RequirementCard = ({ req }) => {
 
   return (
     <>
-      <div className={`bg-white shadow-md border border-gray-100 rounded-2xl p-6 hover:shadow-xl hover:border-brand-primary/30 transition-all relative overflow-hidden`}>
+      <div className={`bg-white shadow-md border border-brand-border rounded-2xl p-6 hover:shadow-xl hover:border-brand-primary/30 transition-all relative overflow-hidden`}>
         {/* Blurred overlay if no access */}
         {!hasAccess && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90 backdrop-blur-md">
@@ -133,7 +133,7 @@ const RequirementCard = ({ req }) => {
             </div>
           )}
 
-          <div className="border-t border-gray-100 pt-4 flex flex-col gap-4">
+          <div className="border-t border-brand-border pt-4 flex flex-col gap-4">
             <div className="flex justify-between items-center text-xs">
               <div className="flex space-x-3">
                 {req.food ? <span className="bg-green-50 text-green-700 px-2 py-1 rounded-md border border-green-200">Food: Yes</span> : <span className="bg-red-50 text-red-700 px-2 py-1 rounded-md border border-red-200">Food: No</span>}
@@ -150,12 +150,12 @@ const RequirementCard = ({ req }) => {
                 {!applicationStatus ? (
                   <button 
                     onClick={() => setIsModalOpen(true)}
-                    className="w-full py-2 bg-brand-primary text-white font-medium rounded-lg hover:bg-brand-primary/90 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-2 bg-brand-primary text-white font-medium rounded-lg hover:bg-brand-primaryDark transition-colors flex items-center justify-center gap-2"
                   >
                     Apply Now
                   </button>
                 ) : applicationStatus === 'pending' ? (
-                  <button disabled className="w-full py-2 bg-gray-100 text-gray-500 font-medium rounded-lg cursor-not-allowed">
+                  <button disabled className="w-full py-2 bg-brand-bg border border-brand-border text-brand-textSec font-medium rounded-lg cursor-not-allowed">
                     Application Sent
                   </button>
                 ) : applicationStatus === 'shortlisted' ? (
@@ -189,11 +189,11 @@ const RequirementCard = ({ req }) => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-bg/90 backdrop-blur-sm p-4">
-          <div className="bg-brand-surface border border-gray-200 rounded-2xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/50 backdrop-blur-sm p-4">
+          <div className="bg-brand-surface border border-brand-border rounded-2xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-brand-navy font-serif">Apply for {req.category}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-brand-textSec hover:text-brand-navy">
+              <button onClick={() => setIsModalOpen(false)} className="text-brand-textSec hover:text-brand-primary transition-colors">
                 <X size={24} />
               </button>
             </div>
@@ -206,7 +206,7 @@ const RequirementCard = ({ req }) => {
                   value={proposedRate}
                   onChange={(e) => setProposedRate(e.target.value)}
                   placeholder="e.g. ₹30,000"
-                  className="w-full bg-brand-bg border border-gray-200 rounded-xl px-4 py-3 text-brand-navy focus:outline-none focus:border-brand-primary"
+                  className="w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25"
                 />
               </div>
               <div>
@@ -216,7 +216,7 @@ const RequirementCard = ({ req }) => {
                   value={availability}
                   onChange={(e) => setAvailability(e.target.value)}
                   placeholder="e.g. 18/08/2026 or Available"
-                  className="w-full bg-brand-bg border border-gray-200 rounded-xl px-4 py-3 text-brand-navy focus:outline-none focus:border-brand-primary"
+                  className="w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25"
                 />
               </div>
               <div>
@@ -226,14 +226,14 @@ const RequirementCard = ({ req }) => {
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Why are you a good fit for this project?"
                   rows="4"
-                  className="w-full bg-brand-bg border border-gray-200 rounded-xl px-4 py-3 text-brand-navy focus:outline-none focus:border-brand-primary custom-scrollbar"
+                  className="w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 custom-scrollbar"
                 ></textarea>
               </div>
               
               <div className="flex gap-3 pt-2">
                 <button 
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 text-brand-textSec font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                  className="flex-1 py-3 bg-brand-bg border border-brand-border text-brand-navy font-bold rounded-xl hover:border-brand-primary hover:text-brand-primary hover:bg-brand-primary/5 transition-colors"
                 >
                   Cancel
                 </button>

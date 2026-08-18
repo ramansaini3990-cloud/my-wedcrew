@@ -11,7 +11,7 @@ const categories = [
 
 export default function CategoryCards() {
   return (
-    <div className="bg-gray-50 py-16 sm:py-24">
+    <div className="bg-brand-bg py-16 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-brand-dark sm:text-4xl">Browse by Category</h2>
@@ -26,12 +26,12 @@ export default function CategoryCards() {
             return (
               <div
                 key={category.name}
-                className="group flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 hover:border-blue-100 cursor-pointer"
+                className="group flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-brand-border hover:border-brand-primary/40 cursor-pointer"
               >
-                <div className="w-14 h-14 bg-blue-50 text-brand-blue rounded-full flex items-center justify-center group-hover:bg-brand-blue group-hover:text-brand-text transition-colors duration-300">
+                <div className="w-14 h-14 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center group-hover:bg-brand-primary group-hover:text-white transition-colors duration-300">
                   <Icon className="w-7 h-7" />
                 </div>
-                <h3 className="mt-4 text-sm font-semibold text-gray-900 text-center">{category.name}</h3>
+                <h3 className="mt-4 text-sm font-semibold text-brand-navy text-center group-hover:text-brand-primary transition-colors">{category.name}</h3>
                 <p className="mt-1 text-xs text-brand-textSec">{category.count} pros</p>
               </div>
             );

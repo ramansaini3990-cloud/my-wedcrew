@@ -22,6 +22,7 @@ import Freelancers from './pages/admin/Freelancers';
 import Companies from './pages/admin/Companies';
 import AdminRequirements from './pages/admin/Requirements';
 import Subscriptions from './pages/admin/Subscriptions';
+import AdminComingSoon from './pages/admin/ComingSoon';
 
 import ScrollToTop from './components/ScrollToTop';
 
@@ -98,7 +99,7 @@ function App() {
               <Route path="companies" element={<Companies />} />
               <Route path="requirements" element={<AdminRequirements />} />
               <Route path="subscriptions" element={<Subscriptions />} />
-              <Route path="*" element={<div className="p-8 text-center text-xl text-brand-textSec">Page under construction...</div>} />
+              <Route path="*" element={<AdminComingSoon />} />
             </Route>
           </Routes>
         </Router>

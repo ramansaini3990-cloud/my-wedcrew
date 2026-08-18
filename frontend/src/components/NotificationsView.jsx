@@ -43,7 +43,7 @@ export default function NotificationsView({ onNotificationClick }) {
 
   if (notifications.length === 0) return (
     <div className="p-12 text-center flex flex-col items-center justify-center">
-      <div className="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+      <div className="h-16 w-16 bg-brand-bg rounded-full flex items-center justify-center mb-4">
         <Bell className="text-brand-textSec/50" size={32} />
       </div>
       <h3 className="text-lg font-bold text-brand-navy mb-1">No notifications</h3>
@@ -52,12 +52,12 @@ export default function NotificationsView({ onNotificationClick }) {
   );
 
   return (
-    <div className="divide-y divide-gray-100">
+    <div className="divide-y divide-brand-border">
       {notifications.map((notif) => (
         <div 
           key={notif.id} 
           onClick={() => handleItemClick(notif)}
-          className={`p-6 cursor-pointer hover:bg-gray-50 transition-colors ${!notif.is_read ? 'bg-brand-primary/5' : ''}`}
+          className={`group p-6 cursor-pointer border-l-[3px] hover:bg-brand-primary/5 transition-colors ${!notif.is_read ? 'bg-brand-primary/[0.07] border-l-brand-primary' : 'border-l-transparent'}`}
         >
           <div className="flex gap-4">
             <div className={`mt-1 flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${
@@ -69,9 +69,9 @@ export default function NotificationsView({ onNotificationClick }) {
               <Bell size={18} />
             </div>
             <div>
-              <h4 className={`text-sm font-bold ${!notif.is_read ? 'text-brand-navy' : 'text-gray-700'}`}>{notif.title}</h4>
+              <h4 className={`text-sm font-bold group-hover:text-brand-primary transition-colors ${!notif.is_read ? 'text-brand-navy' : 'text-brand-textSec'}`}>{notif.title}</h4>
               <p className="text-sm text-brand-textSec mt-1">{notif.message}</p>
-              <p className="text-xs text-gray-400 mt-2">{new Date(notif.created_at).toLocaleString()}</p>
+              <p className="text-xs text-brand-muted mt-2">{new Date(notif.created_at).toLocaleString()}</p>
             </div>
           </div>
         </div>

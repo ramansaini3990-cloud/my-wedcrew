@@ -10,6 +10,7 @@ import adminSubscriptionRoutes from './routes/adminSubscriptionRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import applicationRoutes from './routes/applicationRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import subscriptionRoutes from './routes/subscriptionRoutes.js';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/booking-requests', bookingRequestRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // Base route
 app.get('/', (req, res) => {

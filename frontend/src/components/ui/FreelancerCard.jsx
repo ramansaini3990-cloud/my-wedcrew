@@ -5,7 +5,7 @@ export default function FreelancerCard({ name, category, city, experience, price
   return (
     <motion.div 
       whileHover={{ y: -8 }}
-      className="glass-card bg-white rounded-2xl overflow-hidden group border border-gray-100 hover:border-brand-primary/30 hover:shadow-xl transition-all duration-300 relative"
+      className="glass-card bg-white rounded-2xl overflow-hidden group border border-brand-border hover:border-brand-primary/30 hover:shadow-xl transition-all duration-300 relative"
     >
       {/* Cover/Avatar Image */}
       <div className="h-48 relative overflow-hidden">
@@ -37,13 +37,13 @@ export default function FreelancerCard({ name, category, city, experience, price
               <MapPin size={14} className="text-brand-primary" /> {city}
             </p>
           </div>
-          <div className="flex items-center gap-1 bg-brand-surface border border-gray-100 px-2 py-1 rounded-lg">
-            <Star size={14} className="text-brand-gold fill-brand-gold" />
+          <div className="flex items-center gap-1 bg-brand-surface border border-brand-border px-2 py-1 rounded-lg">
+            <Star size={14} className="text-brand-primary fill-brand-primary" />
             <span className="text-sm font-bold text-brand-navy">{rating}</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6 pt-4 border-t border-gray-100">
+        <div className="grid grid-cols-2 gap-4 mb-6 pt-4 border-t border-brand-border">
           <div>
             <p className="text-xs text-brand-textSec uppercase tracking-wider mb-1">Experience</p>
             <p className="text-sm font-medium text-brand-navy">{experience} Years</p>

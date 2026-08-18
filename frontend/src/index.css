@@ -4,35 +4,105 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Centralised theme tokens - single source of truth for the palette.
+   Kept in sync with the `brand` colors in tailwind.config.js. */
+:root {
+  --color-bg: #F8F5F0;
+  --color-surface: #FFFFFF;
+  --color-primary: #0B1835;
+  --color-secondary: #64748B;
+  --color-border: #E5E7EB;
+  --color-accent: #DE601E;
+  --color-accent-hover: #DE601E;
+  --color-accent-dark: #B94A12;
+  --color-placeholder: #94A3B8;
+}
+
 @layer base {
   body {
     @apply bg-brand-bg text-brand-text font-sans antialiased;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif tracking-wide text-brand-navy;
+  }
+
+  ::placeholder {
+    color: var(--color-placeholder);
+  }
+
+  ::selection {
+    background-color: rgba(222, 96, 30, 0.18);
+    color: #0B1835;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply px-6 py-3 bg-primary-gradient text-white font-medium rounded-lg hover:shadow-[0_0_15px_rgba(169,11,74,0.4)] transition-all duration-300 transform hover:-translate-y-0.5;
+    @apply px-6 py-3 bg-primary-gradient text-white font-medium rounded-lg hover:shadow-[0_0_15px_rgba(222,96,30,0.4)] transition-all duration-300 transform hover:-translate-y-0.5;
   }
-  
+
   .btn-primary-outline {
     @apply px-6 py-3 border border-brand-primary text-brand-primary font-medium rounded-lg hover:bg-brand-primary/10 transition-all duration-300;
   }
 
   .btn-gold {
-    @apply px-6 py-3 bg-gold-gradient text-white font-medium rounded-lg hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] transition-all duration-300 transform hover:-translate-y-0.5;
+    @apply px-6 py-3 bg-gold-gradient text-white font-medium rounded-lg hover:shadow-[0_0_15px_rgba(222,96,30,0.4)] transition-all duration-300 transform hover:-translate-y-0.5;
   }
-  
+
   .btn-gold-outline {
-    @apply px-6 py-3 border border-brand-gold text-brand-gold font-medium rounded-lg hover:bg-brand-gold/10 transition-all duration-300;
+    @apply px-6 py-3 border border-brand-primary text-brand-primary font-medium rounded-lg hover:bg-brand-primary/10 transition-all duration-300;
   }
 
   .glass-card {
-    @apply bg-brand-card/95 backdrop-blur-md border border-gray-100 shadow-xl rounded-xl;
+    @apply bg-brand-card/95 backdrop-blur-md border border-brand-border shadow-xl rounded-xl;
+  }
+}
+
+
+/* ------------------------------------------------------------------
+   Admin dashboard shell
+   Scoped to .admin-shell so the public/marketing pages keep their
+   existing Playfair Display headings untouched.
+   ------------------------------------------------------------------ */
+.admin-shell,
+.admin-shell h1,
+.admin-shell h2,
+.admin-shell h3,
+.admin-shell h4,
+.admin-shell h5,
+.admin-shell h6 {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.011em;
+}
+
+.admin-shell h1,
+.admin-shell h2,
+.admin-shell h3,
+.admin-shell h4 {
+  font-weight: 600;
+  letter-spacing: -0.018em;
+}
+
+/* Tabular figures keep numeric columns aligned in stat cards and tables. */
+.admin-shell .tabular-nums,
+.admin-shell table td,
+.admin-shell table th {
+  font-variant-numeric: tabular-nums;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Respect the OS reduced-motion setting across the whole site. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -47,12 +117,12 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #E2D9CE;
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: rgba(222, 96, 30, 0.55);
 }
 
 /* Base animations */

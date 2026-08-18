@@ -34,10 +34,10 @@ export default function HowItWorks() {
             {steps.map((step) => (
               <div key={step.id} className="relative">
                 <div className="flex flex-col items-center text-center">
-                  <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 text-brand-blue font-bold text-2xl mb-6 shadow-sm">
+                  <div className="flex items-center justify-center w-16 h-16 rounded-full bg-brand-primary/10 text-brand-primary font-bold text-2xl mb-6 shadow-sm">
                     {step.id}
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{step.title}</h3>
+                  <h3 className="text-xl font-bold text-brand-navy mb-2">{step.title}</h3>
                   <p className="text-brand-textSec">{step.description}</p>
                 </div>
               </div>

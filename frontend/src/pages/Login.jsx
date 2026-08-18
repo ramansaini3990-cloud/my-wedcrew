@@ -37,17 +37,17 @@ export default function Login() {
       {/* Background Effects */}
       <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-full max-w-3xl h-full opacity-20 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-brand-primary rounded-full blur-[100px] animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-brand-gold rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-brand-primary rounded-full blur-[120px]"></div>
       </div>
 
-      <div className="max-w-md w-full space-y-8 glass-card p-10 rounded-3xl relative z-10 border border-gray-100 shadow-xl bg-white">
+      <div className="max-w-md w-full space-y-8 glass-card p-10 rounded-3xl relative z-10 border border-brand-border shadow-xl bg-white">
         <div>
           <div className="w-16 h-16 bg-white rounded-2xl border border-brand-primary/30 mx-auto flex items-center justify-center mb-6 shadow-sm">
             <span className="font-serif text-2xl font-bold text-brand-primary">W</span>
           </div>
           <h2 className="mt-2 text-center text-4xl font-serif font-bold text-brand-navy tracking-wide">Welcome Back</h2>
           <p className="mt-4 text-center text-sm text-brand-textSec">
-            Or <Link to="/register" className="font-medium text-brand-primary hover:text-brand-navy transition-colors underline-offset-4 hover:underline">request studio access</Link>
+            Or <Link to="/register" className="font-medium text-brand-primary hover:text-brand-primaryDark transition-colors underline-offset-4 hover:underline">request studio access</Link>
           </p>
         </div>
         
@@ -68,7 +68,7 @@ export default function Login() {
                 required 
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)} 
-                className="appearance-none rounded-xl relative block w-full px-4 py-3 bg-white border border-gray-200 placeholder-gray-400 text-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm transition-colors" 
+                className="appearance-none rounded-xl relative block w-full px-4 py-3 bg-white border border-brand-border placeholder-brand-muted text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary sm:text-sm transition-colors" 
                 placeholder="studio@example.com" 
               />
             </div>
@@ -81,7 +81,7 @@ export default function Login() {
                 required 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
-                className="appearance-none rounded-xl relative block w-full px-4 py-3 bg-white border border-gray-200 placeholder-gray-400 text-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary sm:text-sm transition-colors" 
+                className="appearance-none rounded-xl relative block w-full px-4 py-3 bg-white border border-brand-border placeholder-brand-muted text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary sm:text-sm transition-colors" 
                 placeholder="••••••••" 
               />
             </div>
@@ -92,12 +92,12 @@ export default function Login() {
                 id="remember-me" 
                 name="remember-me" 
                 type="checkbox" 
-                className="h-4 w-4 bg-white border-gray-300 rounded text-brand-primary focus:ring-brand-primary cursor-pointer" 
+                className="h-4 w-4 bg-white border-brand-border rounded text-brand-primary focus:ring-brand-primary cursor-pointer" 
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-brand-textSec cursor-pointer">Remember me</label>
             </div>
             <div className="text-sm">
-              <a href="#" className="font-medium text-brand-primary hover:text-brand-navy transition-colors">Forgot password?</a>
+              <a href="#" className="font-medium text-brand-primary hover:text-brand-primaryDark transition-colors">Forgot password?</a>
             </div>
           </div>
           <div className="pt-2">

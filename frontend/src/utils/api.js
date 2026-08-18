@@ -6,8 +6,11 @@ import axios from 'axios';
 const hostname = window.location.hostname;
 const defaultBaseUrl = `http://${hostname}:5000`;
 
+// Single source of truth for the backend origin, shared by axios and Socket.IO.
+export const API_BASE_URL = import.meta.env.VITE_API_URL || defaultBaseUrl;
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || defaultBaseUrl,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },

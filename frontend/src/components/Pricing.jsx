@@ -31,7 +31,7 @@ export default function Pricing() {
   ];
 
   return (
-    <div className="bg-gray-50 py-16 sm:py-24">
+    <div className="bg-brand-bg py-16 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="sm:text-center">
           <h2 className="text-3xl font-extrabold text-brand-dark sm:text-4xl">Simple, transparent pricing</h2>
@@ -40,16 +40,16 @@ export default function Pricing() {
 
         <div className="mt-16 space-y-12 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-8">
           {plans.map((plan) => (
-            <div key={plan.name} className={`relative p-8 bg-white border ${plan.popular ? 'border-brand-blue shadow-lg' : 'border-gray-200 shadow-sm'} rounded-3xl flex flex-col`}>
+            <div key={plan.name} className={`relative p-8 bg-white border ${plan.popular ? 'border-2 border-brand-primary shadow-lg' : 'border-brand-border shadow-sm'} rounded-3xl flex flex-col`}>
               {plan.popular && (
                 <div className="absolute top-0 right-6 transform -translate-y-1/2">
-                  <span className="bg-brand-blue text-brand-text px-3 py-1 text-sm font-semibold rounded-full tracking-wide">
+                  <span className="bg-brand-primary text-white px-3 py-1 text-sm font-semibold rounded-full tracking-wide">
                     Most Popular
                   </span>
                 </div>
               )}
               <div className="mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
+                <h3 className="text-2xl font-bold text-brand-navy">{plan.name}</h3>
                 <p className="mt-2 text-brand-textSec">{plan.description}</p>
                 <div className="mt-4 flex items-baseline text-5xl font-extrabold text-brand-dark">
                   {plan.price}
@@ -60,13 +60,13 @@ export default function Pricing() {
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start">
                     <div className="flex-shrink-0">
-                      <Check className="h-6 w-6 text-green-500" />
+                      <Check className="h-6 w-6 text-brand-success" />
                     </div>
-                    <p className="ml-3 text-base text-gray-700">{feature}</p>
+                    <p className="ml-3 text-base text-brand-textSec">{feature}</p>
                   </li>
                 ))}
               </ul>
-              <button className={`w-full py-3 px-4 rounded-xl font-medium transition-colors ${plan.popular ? 'bg-brand-blue text-brand-text hover:bg-blue-700' : 'bg-blue-50 text-brand-blue hover:bg-blue-100'}`}>
+              <button className={`w-full py-3 px-4 rounded-xl font-medium transition-colors ${plan.popular ? 'bg-brand-primary text-white hover:bg-brand-primaryDark' : 'bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20'}`}>
                 {plan.buttonText}
               </button>
             </div>

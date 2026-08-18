@@ -2,10 +2,50 @@ import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import Message from './models/Message.js';
 import Conversation from './models/Conversation.js';
-import { hasFeature } from './services/subscriptionService.js';
+import User from './models/User.js';
+import Notification from './models/Notification.js';
+import { canChat, SUBSCRIPTION_ERRORS } from './services/subscriptionService.js';
+import { countUnreadForConversation } from './services/chatUnreadService.js';
 
 let io;
 const userSockets = new Map(); // userId -> socketId
+
+/**
+ * Notifies a user that somebody tried to message them while their subscription
+ * is inactive. De-duplicated per conversation so it cannot spam the inbox.
+ */
+const notifyLockedMessage = async (recipientId, senderId, conversationId) => {
+  try {
+    const [recipient, sender] = await Promise.all([
+      User.findById(recipientId),
+      User.findById(senderId)
+    ]);
+    if (!recipient) return;
+
+    const existing = await Notification.findOne({
+      recipient_id: recipientId,
+      conversation_id: conversationId,
+      type: 'locked_message',
+      is_read: false
+    });
+    if (existing) return;
+
+    const notification = new Notification({
+      recipient_id: recipientId,
+      recipient_role: recipient.role,
+      type: 'locked_message',
+      title: `New message from ${sender ? sender.name : 'a user'}`,
+      message: 'An active subscription is required to view and reply.',
+      conversation_id: conversationId,
+      sender_id: senderId,
+      subscription_required: true
+    });
+    await notification.save();
+    emitNotification(recipientId, notification);
+  } catch (error) {
+    console.error('notifyLockedMessage error:', error);
+  }
+};
 
 export const initSocket = (server) => {
   io = new Server(server, {
@@ -39,30 +79,76 @@ export const initSocket = (server) => {
     socket.on('send_message', async (data, callback) => {
       try {
         const { conversationId, text, receiverId, messageType, message: messageText } = data;
-        
-        // Check feature access
-        const conversation = await Conversation.findById(conversationId);
-        const companyHasChat = await hasFeature(conversation.company_id.toString(), 'chat');
-        const freelancerHasChat = await hasFeature(conversation.freelancer_id.toString(), 'chat');
 
-        if (!companyHasChat || !freelancerHasChat) {
-          if (callback) callback({ success: false, message: 'Active subscription required for both users' });
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+          if (callback) {
+            callback({ success: false, code: 'CONVERSATION_NOT_FOUND', message: 'Conversation not found' });
+          }
+          return;
+        }
+
+        const senderId = String(socket.user.id || socket.user._id);
+        const companyId = conversation.company_id.toString();
+        const freelancerId = conversation.freelancer_id.toString();
+
+        // Only participants may post into a conversation.
+        if (senderId !== companyId && senderId !== freelancerId) {
+          if (callback) {
+            callback({ success: false, code: 'FORBIDDEN', message: 'You are not a participant of this conversation' });
+          }
+          return;
+        }
+
+        // Same authority the REST layer uses - both sides must have chat.
+        const access = await canChat(companyId, freelancerId);
+        if (!access.allowed) {
+          const blockedReceiverId = senderId === companyId ? freelancerId : companyId;
+          const senderHasChat = senderId === companyId ? access.companyHasChat : access.freelancerHasChat;
+          const receiverHasChat = senderId === companyId ? access.freelancerHasChat : access.companyHasChat;
+
+          // The sender is subscribed but the other side is not: let them know
+          // someone is trying to reach them so they can reactivate.
+          if (senderHasChat && !receiverHasChat) {
+            await notifyLockedMessage(blockedReceiverId, senderId, conversationId);
+          }
+
+          if (callback) {
+            callback({
+              success: false,
+              ...SUBSCRIPTION_ERRORS.CHAT_SUBSCRIPTION_REQUIRED,
+              details: {
+                company_has_chat: access.companyHasChat,
+                freelancer_has_chat: access.freelancerHasChat,
+                self_has_chat: senderId === companyId ? access.companyHasChat : access.freelancerHasChat,
+                reason: access.reason
+              }
+            });
+          }
           return;
         }
 
         let finalMessage = text || messageText;
         if (typeof finalMessage === 'object') {
-          if (finalMessage.text) {
-             finalMessage = finalMessage.text;
-          } else {
-             finalMessage = JSON.stringify(finalMessage);
+          finalMessage = finalMessage.text ? finalMessage.text : JSON.stringify(finalMessage);
+        }
+        if (!finalMessage || !String(finalMessage).trim()) {
+          if (callback) {
+            callback({ success: false, code: 'VALIDATION_ERROR', message: 'Message cannot be empty' });
           }
+          return;
+        }
+
+        // Derive the receiver from the conversation rather than trusting the client.
+        const resolvedReceiverId = senderId === companyId ? freelancerId : companyId;
+        if (receiverId && String(receiverId) !== resolvedReceiverId) {
+          console.warn(`send_message receiverId mismatch on conversation ${conversationId}; using conversation participants.`);
         }
 
         const message = new Message({
           conversation_id: conversationId,
-          sender_id: socket.user.id || socket.user._id,
-          receiver_id: receiverId,
+          sender_id: senderId,
+          receiver_id: resolvedReceiverId,
           message: finalMessage,
           message_type: messageType || 'text',
           read_at: null
@@ -74,52 +160,36 @@ export const initSocket = (server) => {
           last_message_at: new Date()
         });
 
-        const User = (await import('./models/User.js')).default;
-        const Notification = (await import('./models/Notification.js')).default;
-
-        const receiverUser = await User.findById(receiverId);
-        let receiverIsLocked = false;
-        
-        if (receiverUser && receiverUser.role === 'company') {
-           const receiverHasChat = await hasFeature(receiverId, 'chat');
-           if (!receiverHasChat) {
-             receiverIsLocked = true;
-           }
-        }
-
-        // Emit to the conversation room. 
-        // Note: The unsubscribed receiver shouldn't even be in this room if they can't open the chat.
-        // But to be perfectly safe, we can emit directly to sender if receiver is locked, or just leave it.
-        // The sender definitely needs to receive it. 
         io.to(conversationId).emit('receive_message', message);
-        
-        if (receiverIsLocked) {
-           const senderUser = await User.findById(socket.user.id || socket.user._id);
-           const notification = new Notification({
-             recipient_id: receiverId,
-             recipient_role: receiverUser.role,
-             type: 'locked_message',
-             title: `New message from ${senderUser.name}`,
-             message: 'Subscribe to view and reply.',
-             conversation_id: conversationId,
-             sender_id: senderUser._id,
-             subscription_required: true
-           });
-           await notification.save();
-           emitNotification(receiverId, notification);
-        } else {
-           const receiverSocketId = userSockets.get(receiverId);
-           if (receiverSocketId) {
-             io.to(receiverSocketId).emit('new_message_notification', message);
-           }
+
+        // Chat messages deliberately do NOT create a system Notification.
+        // Unread state lives on the conversation (Message.read_at) and is
+        // pushed to the recipient as a conversation-scoped socket event, so the
+        // global Notifications badge stays reserved for booking/application/
+        // subscription events.
+        const receiverUser = await User.findById(resolvedReceiverId);
+        if (receiverUser) {
+          const receiverSocketId = userSockets.get(String(resolvedReceiverId));
+          if (receiverSocketId) {
+            // Server-computed absolute count - the client sets rather than
+            // increments, so duplicate events or a socket reconnect can never
+            // double-count.
+            const unreadCount = await countUnreadForConversation(conversationId, resolvedReceiverId);
+            io.to(receiverSocketId).emit('conversation_unread', {
+              conversationId: String(conversationId),
+              unreadCount,
+              lastMessageAt: message.createdAt
+            });
+            // Retained for backward compatibility with existing listeners.
+            io.to(receiverSocketId).emit('new_message_notification', message);
+          }
         }
 
         if (callback) callback({ success: true, message });
-
       } catch (error) {
         console.error('Socket send_message error:', error);
-        socket.emit('error', 'Failed to send message: ' + error.message);
-        if (callback) callback({ error: 'Failed to send message: ' + error.message });
+        socket.emit('error', 'Failed to send message');
+        if (callback) callback({ success: false, code: 'SERVER_ERROR', message: 'Failed to send message' });
       }
     });
 
@@ -137,8 +207,7 @@ export const getIo = () => {
 
 export const emitNotification = (userId, notification) => {
   if (!io) return;
-  const idStr = userId.toString();
-  const socketId = userSockets.get(idStr);
+  const socketId = userSockets.get(userId.toString());
   if (socketId) {
     io.to(socketId).emit('new_notification', notification);
   }

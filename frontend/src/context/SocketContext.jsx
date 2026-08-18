@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext'; // adjust path if needed
+import { API_BASE_URL } from '../utils/api';
 
 const SocketContext = createContext(null);
 
@@ -12,7 +13,8 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      const newSocket = io('http://localhost:5000', {
+      // Uses the same origin as the REST client so LAN/deployed hosts work too.
+      const newSocket = io(API_BASE_URL, {
         auth: { token }
       });
 
@@ -20,6 +22,8 @@ export const SocketProvider = ({ children }) => {
 
       return () => newSocket.close();
     }
+
+    setSocket(null);
   }, [token]);
 
   return (

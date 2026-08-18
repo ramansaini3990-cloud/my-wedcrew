@@ -17,12 +17,12 @@ export default function Hero() {
               </p>
               
               {/* Search Bar UI */}
-              <div className="mt-8 sm:max-w-lg sm:mx-auto lg:mx-0 flex rounded-full shadow-lg border border-gray-100 bg-white p-2">
+              <div className="mt-8 sm:max-w-lg sm:mx-auto lg:mx-0 flex rounded-full shadow-lg border border-brand-border bg-white p-2">
                 <div className="flex-grow flex items-center pl-4 pr-2">
                   <Search className="h-5 w-5 text-brand-primary" />
                   <input
                     type="text"
-                    className="w-full pl-3 pr-3 py-2 text-brand-navy bg-transparent outline-none placeholder-gray-400"
+                    className="w-full pl-3 pr-3 py-2 text-brand-navy bg-transparent outline-none placeholder-brand-muted"
                     placeholder="E.g. Cinematographer in Mumbai..."
                   />
                 </div>
@@ -34,7 +34,7 @@ export default function Hero() {
           </main>
         </div>
       </div>
-      <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2 bg-gray-50 flex items-center justify-center p-12">
+      <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2 bg-brand-bg flex items-center justify-center p-12">
         <div className="grid grid-cols-2 gap-4 w-full h-full max-h-[600px] opacity-80">
            <div className="bg-brand-primary/10 rounded-3xl h-full shadow-inner animate-pulse"></div>
            <div className="bg-brand-primary/5 rounded-3xl h-4/5 mt-auto shadow-inner animate-pulse"></div>

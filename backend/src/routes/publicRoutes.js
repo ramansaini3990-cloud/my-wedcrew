@@ -10,8 +10,25 @@ router.get('/freelancers', async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     
+    // Optional filters. The Professionals page has always SENT `city` and
+    // `profession`; they were previously ignored, so search returned unfiltered
+    // results. Applying them is additive - the response shape is unchanged and
+    // omitting the params behaves exactly as before.
+    const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const query = { role: 'freelancer' };
+
+    const cityFilter = (req.query.city || '').trim();
+    const professionFilter = (req.query.profession || '').trim();
+
+    if (cityFilter) {
+      query.city = new RegExp(`^${escapeRegex(cityFilter)}$`, 'i');
+    }
+    if (professionFilter) {
+      query.profession = new RegExp(escapeRegex(professionFilter), 'i');
+    }
+
     // Fetch public freelancer info
-    const users = await User.find({ role: 'freelancer' })
+    const users = await User.find(query)
       .select('id name city state profession created_at')
       .sort({ created_at: -1 })
       .skip(skip)
@@ -45,7 +62,7 @@ router.get('/freelancers', async (req, res) => {
       return { ...u, available_dates };
     });
 
-    const total = await User.countDocuments({ role: 'freelancer' });
+    const total = await User.countDocuments(query);
 
     res.json({
       data: formattedUsers,

@@ -15,21 +15,24 @@ const AdminLayout = () => {
   }, [pathname]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-brand-bg text-brand-text">
-      {/* Sidebar */}
+    // `admin-shell` scopes the Inter typography rules in index.css to the
+    // dashboard only. Sidebar + Topbar stay mounted; routed pages render into
+    // <Outlet /> in the main area on the right.
+    <div className="admin-shell flex h-screen overflow-hidden bg-brand-bg text-brand-text">
+      {/* Sidebar - persistent */}
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       {/* Main Content */}
-      <div 
+      <div
         ref={mainContentRef}
-        className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden"
+        className="relative flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden"
       >
-        {/* Topbar */}
+        {/* Topbar - persistent */}
         <Topbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
         {/* Page Content */}
-        <main className="w-full grow p-6">
-          <div className="max-w-7xl mx-auto w-full">
+        <main className="w-full grow px-4 py-4 sm:px-5 sm:py-5">
+          <div className="max-w-[1400px] mx-auto w-full">
             <Outlet />
           </div>
         </main>

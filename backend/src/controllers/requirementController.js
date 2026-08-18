@@ -1,21 +1,5 @@
 import Requirement from '../models/Requirement.js';
-import Subscription from '../models/Subscription.js';
-
-// Helper function to check if user has active subscription
-const hasActiveSubscription = async (userId) => {
-  try {
-    const sub = await Subscription.findOne({
-      user_id: userId,
-      payment_status: 'paid',
-      end_date: { $gte: new Date() }
-    }).sort({ end_date: -1 });
-    
-    return !!sub;
-  } catch (error) {
-    console.error('Subscription check error:', error);
-    return false;
-  }
-};
+import { hasActiveSubscription } from '../services/subscriptionService.js';
 
 // @desc    Create a new requirement
 // @route   POST /api/requirements

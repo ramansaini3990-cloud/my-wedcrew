@@ -1,12 +1,20 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import axios from 'axios';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import api from '../utils/api';
+import Avatar from '../components/ui/Avatar';
+import { ArrowLeft } from 'lucide-react';
 
-const Messages = () => {
+/**
+ * `embedded` renders the chat to fill its parent (used inside the Freelancer /
+ * Company dashboard main content area). Without it the component keeps its
+ * original standalone full-page framing for the /messages route.
+ */
+const Messages = ({ embedded = false }) => {
   const location = useLocation();
-  const { user, token } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const socket = useSocket();
   const [conversations, setConversations] = useState([]);
   const [activeConv, setActiveConv] = useState(null);
@@ -14,6 +22,10 @@ const Messages = () => {
   const [newMessage, setNewMessage] = useState('');
   const [error, setError] = useState('');
   const [isLocked, setIsLocked] = useState(false);
+  // Explains WHICH side is missing a subscription (comes from the backend).
+  const [lockDetails, setLockDetails] = useState(null);
+  // Mobile only: which of the two panels is showing.
+  const [mobileView, setMobileView] = useState('list');
   const messagesEndRef = useRef(null);
   const [initialSelectDone, setInitialSelectDone] = useState(false);
 
@@ -39,15 +51,37 @@ const Messages = () => {
       socket.on('receive_message', (message) => {
         const msgConvId = String(message.conversation_id || message.conversationId);
         const activeConvId = String(activeConv?._id || activeConv?.id);
-        
+
         if (activeConv && msgConvId === activeConvId) {
           setMessages(prev => {
             if (prev.find(m => (m._id || m.id) === (message._id || message.id))) return prev;
             return [...prev, message];
           });
           scrollToBottom();
+          // Already on screen: clear it server-side so the badge never appears
+          // and the read state survives a refresh.
+          markConversationRead(msgConvId);
         }
         fetchConversations();
+      });
+
+      // Conversation-scoped unread update. The server sends an absolute count,
+      // so duplicate events or a reconnect cannot double-count.
+      socket.on('conversation_unread', ({ conversationId, unreadCount }) => {
+        const activeConvId = String(activeConv?._id || activeConv?.id);
+
+        if (activeConv && String(conversationId) === activeConvId) {
+          markConversationRead(conversationId);
+          return;
+        }
+
+        setConversations(prev =>
+          prev.map(c =>
+            String(c.id || c._id) === String(conversationId)
+              ? { ...c, unread_count: unreadCount }
+              : c
+          )
+        );
       });
 
       socket.on('error', (err) => {
@@ -56,6 +90,7 @@ const Messages = () => {
 
       return () => {
         socket.off('receive_message');
+        socket.off('conversation_unread');
         socket.off('error');
       };
     }
@@ -63,9 +98,7 @@ const Messages = () => {
 
   const fetchConversations = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/chat/conversations', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/api/chat/conversations');
       
       const getValidId = (obj) => {
         if (!obj) return null;
@@ -116,23 +149,48 @@ const Messages = () => {
     }
   };
 
+  /**
+   * Clears unread state for ONE conversation, server-side.
+   * Optimistically zeroes the local badge so the UI responds immediately.
+   */
+  const markConversationRead = async (conversationId) => {
+    if (!conversationId) return;
+    setConversations(prev =>
+      prev.map(c =>
+        String(c.id || c._id) === String(conversationId) ? { ...c, unread_count: 0 } : c
+      )
+    );
+    try {
+      await api.patch(`/api/chat/conversations/${conversationId}/read`);
+    } catch (err) {
+      // Non-fatal: the next conversations fetch restores the true count.
+      console.error('Failed to mark conversation as read', err);
+    }
+  };
+
   const selectConversation = async (conv) => {
     setIsLocked(false);
+    setLockDetails(null);
+    setError('');
     setActiveConv(conv);
+    setMobileView('chat');
     const convId = conv.id || conv._id;
     if (socket) {
       socket.emit('join_conversation', convId);
     }
     try {
-      const res = await axios.get(`http://localhost:5000/api/chat/conversations/${convId}/messages`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/api/chat/conversations/${convId}/messages`);
       setMessages(res.data);
       scrollToBottom();
+      // Opening the conversation clears only this conversation's unread badge.
+      markConversationRead(convId);
     } catch (err) {
       console.error(err);
       if (err.response?.status === 403 && err.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
         setIsLocked(true);
+        setLockDetails(err.response.data.details || null);
+      } else {
+        setError(err.response?.data?.message || 'Failed to load messages.');
       }
     }
   };
@@ -174,7 +232,14 @@ const Messages = () => {
       message: newMessage,
       receiverId: receiverId
     }, (response) => {
-      if (response && response.error) {
+      if (response && response.success === false) {
+        // Backend is the authority - it can lock the chat mid-session.
+        if (response.code === 'SUBSCRIPTION_REQUIRED') {
+          setIsLocked(true);
+          setLockDetails(response.details || null);
+        }
+        setError(response.message || 'Failed to send message.');
+      } else if (response && response.error) {
         setError(response.error);
       } else if (response && response.success && response.message) {
         setMessages(prev => {
@@ -200,12 +265,26 @@ const Messages = () => {
   };
 
   return (
-    <div className="bg-brand-bg pt-[90px] pb-6 px-4 flex justify-center items-start" style={{ height: '100vh' }}>
-      <div className="w-full max-w-[1200px] h-full flex bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-full md:w-[320px] flex-shrink-0 border-r border-gray-200 bg-white flex flex-col hidden md:flex">
-          <div className="h-[60px] px-4 flex items-center border-b border-gray-100 bg-brand-surface">
-            <h2 className="text-lg font-bold text-brand-navy">Conversations</h2>
+    <div
+      className={
+        embedded
+          ? 'w-full h-[calc(100vh-9rem)] min-h-[24rem] flex'
+          : 'bg-brand-bg pt-[90px] pb-6 px-4 flex justify-center items-start h-screen'
+      }
+    >
+      <div
+        className={`w-full h-full flex bg-white rounded-xl shadow-sm border border-brand-border overflow-hidden ${
+          embedded ? '' : 'max-w-[1200px]'
+        }`}
+      >
+        {/* Conversation list */}
+        <div
+          className={`w-full md:w-[290px] md:flex-shrink-0 border-r border-brand-border bg-white flex-col ${
+            mobileView === 'list' ? 'flex' : 'hidden md:flex'
+          }`}
+        >
+          <div className="h-[52px] px-3.5 flex items-center border-b border-brand-border bg-brand-surface shrink-0">
+            <h2 className="text-[13px] font-semibold text-brand-navy uppercase tracking-wider">Conversations</h2>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {conversations.length === 0 ? (
@@ -228,23 +307,35 @@ const Messages = () => {
                 }
 
                 const isActive = (activeConv?.id || activeConv?._id) === convId;
+                const unread = isActive ? 0 : (conv.unread_count || 0);
 
                 return (
                   <div 
                     key={convId} 
                     onClick={() => selectConversation(conv)}
-                    className={`p-4 border-b border-gray-50 cursor-pointer transition-colors ${isActive ? 'bg-brand-primary/5 border-l-4 border-l-brand-primary' : 'hover:bg-gray-50 border-l-4 border-l-transparent'}`}
+                    className={`px-3 py-2.5 border-b border-brand-border cursor-pointer transition-colors ${isActive ? 'bg-brand-primary/5 border-l-[3px] border-l-brand-primary' : 'hover:bg-brand-primary/5 border-l-[3px] border-l-transparent'}`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary font-bold text-sm uppercase flex-shrink-0">
-                        {(otherUser.name || otherUser.company_name || 'U').charAt(0)}
-                      </div>
+                    <div className="flex items-center gap-2.5">
+                      <Avatar user={otherUser} size="md" />
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-brand-navy text-[15px] truncate">
-                          {otherUser.name || otherUser.company_name || 'Unknown'}
+                        <div className="flex items-center gap-2">
+                          <div className={`flex-1 truncate text-[13px] ${unread > 0 ? 'font-bold text-brand-navy' : 'font-semibold text-brand-navy'}`}>
+                            {otherUser.name || otherUser.company_name || 'Unknown'}
+                          </div>
+                          {unread > 0 && (
+                            <span
+                              title={`${unread} unread message${unread === 1 ? '' : 's'}`}
+                              className="shrink-0 min-w-[18px] h-[18px] px-1.5 rounded-full bg-brand-primary text-white text-[10px] font-bold flex items-center justify-center"
+                            >
+                              {unread > 99 ? '99+' : unread}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-[13px] text-brand-textSec truncate mt-0.5">
-                          {conv.last_message?.message || conv.last_message?.text || 'No messages'}
+                        <div className={`text-[12px] truncate mt-0.5 flex items-center gap-1 ${unread > 0 ? 'text-brand-navy font-medium' : 'text-brand-textSec'}`}>
+                          {conv.is_locked && <span title="Subscription required">🔒</span>}
+                          <span className="truncate">
+                            {conv.last_message?.message || conv.last_message?.text || 'No messages'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -256,19 +347,33 @@ const Messages = () => {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col bg-[#F9FAFB] relative min-w-0">
+        <div
+          className={`flex-1 flex-col bg-brand-bg relative min-w-0 ${
+            mobileView === 'chat' ? 'flex' : 'hidden md:flex'
+          }`}
+        >
           {isLocked ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8">
-              <div className="w-16 h-16 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm mb-6">
+              <div className="w-16 h-16 bg-white border border-brand-border rounded-full flex items-center justify-center shadow-sm mb-6">
                 <span className="text-2xl">🔒</span>
               </div>
               <h3 className="text-xl font-bold text-brand-navy mb-2">Messages Locked</h3>
-              <p className="text-brand-textSec text-center max-w-md mb-6">
+              <p className="text-brand-textSec text-center max-w-md mb-2">
                 An active subscription is required for both users to access chat.
               </p>
+              {lockDetails && (
+                <p className="text-sm text-brand-textSec text-center max-w-md mb-6">
+                  {lockDetails.self_has_chat
+                    ? 'Your plan is active — the other participant needs an active subscription before messaging resumes.'
+                    : 'Your subscription is not active. Contact the admin to activate your plan.'}
+                </p>
+              )}
+              <p className="text-xs text-brand-textSec text-center max-w-md mb-6">
+                Your previous messages are safe and will reappear as soon as both subscriptions are active.
+              </p>
               <button 
-                onClick={() => window.location.href = '/pricing'}
-                className="px-6 py-2.5 bg-brand-primary text-white rounded-full font-medium hover:bg-brand-primaryLight transition-all shadow-sm"
+                onClick={() => navigate('/#pricing')}
+                className="px-6 py-2.5 bg-brand-primary text-white rounded-full font-medium hover:bg-brand-primaryDark transition-all shadow-sm"
               >
                 View Plans / Subscribe
               </button>
@@ -276,7 +381,14 @@ const Messages = () => {
           ) : activeConv ? (
             <>
               {/* Chat Header */}
-              <div className="h-[60px] px-6 border-b border-gray-200 bg-white flex items-center shadow-sm z-10 flex-shrink-0">
+              <div className="h-[52px] px-3 sm:px-4 border-b border-brand-border bg-white flex items-center gap-2 shadow-sm z-10 flex-shrink-0">
+                <button
+                  onClick={() => setMobileView('list')}
+                  className="md:hidden p-1.5 -ml-1 rounded-md text-brand-textSec hover:text-brand-primary hover:bg-brand-primary/5 transition-colors shrink-0"
+                  aria-label="Back to conversations"
+                >
+                  <ArrowLeft size={18} />
+                </button>
                 {(() => {
                   let otherUser = {};
                   const extractId = (obj) => {
@@ -292,13 +404,16 @@ const Messages = () => {
                     otherUser = typeof activeConv.company_id === 'object' ? activeConv.company_id : { name: 'Company' };
                   }
                   return (
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary font-bold text-xs uppercase">
-                        {(otherUser.name || otherUser.company_name || 'U').charAt(0)}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Avatar user={otherUser} size="sm" />
+                      <div className="min-w-0 leading-tight">
+                        <p className="font-semibold text-[14px] text-brand-navy truncate">
+                          {otherUser.name || otherUser.company_name || 'Chat'}
+                        </p>
+                        <p className="text-[11px] text-brand-textSec">
+                          {activeConv?.is_locked ? 'Subscription required' : 'Active'}
+                        </p>
                       </div>
-                      <span className="font-bold text-[16px] text-brand-navy">
-                        {otherUser.name || otherUser.company_name || 'Chat'}
-                      </span>
                     </div>
                   );
                 })()}
@@ -307,7 +422,7 @@ const Messages = () => {
               {/* Message List */}
               <div 
                 ref={messagesContainerRef}
-                className="flex-1 p-6 overflow-y-auto custom-scrollbar flex flex-col space-y-4"
+                className="flex-1 px-4 py-4 sm:px-5 overflow-y-auto custom-scrollbar flex flex-col space-y-2.5"
               >
                 {messages.map((msg, index) => {
                   const msgId = msg.id || msg._id || index;
@@ -315,10 +430,10 @@ const Messages = () => {
                   const isMine = String(senderId) === String(user.id || user._id);
                   return (
                     <div key={msgId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`px-4 py-2.5 rounded-2xl max-w-[75%] md:max-w-[65%] text-[15px] leading-relaxed shadow-sm ${
+                      <div className={`px-3.5 py-2 rounded-2xl max-w-[80%] md:max-w-[65%] text-[13.5px] leading-relaxed shadow-sm ${
                         isMine 
                           ? 'bg-brand-primary text-white rounded-br-sm' 
-                          : 'bg-white border border-gray-100 text-brand-navy rounded-bl-sm'
+                          : 'bg-white border border-brand-border text-brand-navy rounded-bl-sm'
                       }`}>
                         {msg.message || msg.text}
                       </div>
@@ -336,8 +451,8 @@ const Messages = () => {
               )}
 
               {/* Input Area */}
-              <div className="p-4 bg-white border-t border-gray-200 flex-shrink-0">
-                <form onSubmit={sendMessage} className="flex gap-3 items-end max-w-4xl mx-auto">
+              <div className="p-3 bg-white border-t border-brand-border flex-shrink-0">
+                <form onSubmit={sendMessage} className="flex gap-2.5 items-end max-w-4xl mx-auto">
                   <textarea 
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
@@ -348,14 +463,14 @@ const Messages = () => {
                       }
                     }}
                     placeholder="Type a message..."
-                    className="flex-1 bg-white border border-[#e0e0e0] rounded-[24px] px-[18px] py-[12px] focus:outline-none focus:border-brand-primary focus:ring-0 shadow-none resize-none text-[15px] text-brand-navy max-h-[120px] custom-scrollbar"
+                    className="flex-1 bg-white border border-brand-border rounded-[20px] px-4 py-2.5 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 shadow-none resize-none text-[13.5px] text-brand-navy max-h-[110px] custom-scrollbar"
                     rows="1"
                     disabled={!!error}
                   />
                   <button 
                     type="submit"
                     disabled={!!error || !newMessage.trim()}
-                    className="h-[48px] px-6 bg-brand-primary text-white rounded-full hover:bg-brand-primaryLight disabled:opacity-50 font-medium transition-colors shadow-sm flex items-center justify-center flex-shrink-0"
+                    className="h-[40px] px-5 bg-brand-primary text-white rounded-full hover:bg-brand-primaryDark disabled:opacity-50 text-[13px] font-medium transition-colors shadow-sm flex items-center justify-center flex-shrink-0"
                   >
                     Send
                   </button>
@@ -363,8 +478,8 @@ const Messages = () => {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-brand-textSec bg-[#F9FAFB]">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-gray-100">
+            <div className="flex-1 flex flex-col items-center justify-center text-brand-textSec bg-brand-bg">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-brand-border">
                 <svg className="w-8 h-8 text-brand-primary/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
               </div>
               <p className="font-medium text-[15px]">Select a conversation to start chatting</p>

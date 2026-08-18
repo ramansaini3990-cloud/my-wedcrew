@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { Camera, MapPin, Calendar, Star, X } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
@@ -19,9 +19,12 @@ const Professionals = () => {
   const [professionals, setProfessionals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [chatLoading, setChatLoading] = useState(false);
+  // Seeded from the URL so the homepage search panel (and shareable links)
+  // land here with filters already applied. Same filter state as before.
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState({
-    city: '',
-    profession: ''
+    city: searchParams.get('city') || '',
+    profession: searchParams.get('profession') || ''
   });
 
   // Modal State
@@ -98,7 +101,7 @@ const Professionals = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl pt-32">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-serif font-bold text-brand-gold mb-4">Elite Professionals</h1>
+        <h1 className="text-4xl font-serif font-bold text-brand-primary mb-4">Elite Professionals</h1>
         <p className="text-brand-textSec">Discover and hire top-tier freelancers for your wedding production.</p>
       </div>
 
@@ -109,13 +112,13 @@ const Professionals = () => {
           placeholder="Filter by City"
           value={filters.city}
           onChange={handleFilterChange}
-          className="flex-1 bg-brand-card/50 border border-gray-200 rounded-xl px-4 py-3 text-brand-text focus:outline-none focus:border-brand-gold"
+          className="flex-1 bg-brand-surface border border-brand-border rounded-xl px-4 py-3 text-brand-text focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25"
         />
         <select
           name="profession"
           value={filters.profession}
           onChange={handleFilterChange}
-          className="flex-1 bg-brand-card/50 border border-gray-200 rounded-xl px-4 py-3 text-brand-text focus:outline-none focus:border-brand-gold"
+          className="flex-1 bg-brand-surface border border-brand-border rounded-xl px-4 py-3 text-brand-text focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25"
         >
           <option value="">All Professions</option>
           {categories.map(c => (
@@ -126,21 +129,21 @@ const Professionals = () => {
 
       {loading ? (
         <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-gold"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {professionals.length > 0 ? (
             professionals.map(pro => (
-              <div key={pro.id} className="glass-card rounded-2xl p-6 border border-gray-200 hover:border-brand-gold/30 transition-all duration-300 group">
+              <div key={pro.id} className="glass-card rounded-2xl p-6 border border-brand-border hover:border-brand-primary/30 transition-all duration-300 group">
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="w-16 h-16 rounded-full bg-brand-surface border border-brand-gold/20 flex items-center justify-center text-2xl font-serif text-brand-gold group-hover:scale-105 transition-transform">
+                  <div className="w-16 h-16 rounded-full bg-brand-surface border border-brand-primary/20 flex items-center justify-center text-2xl font-serif text-brand-primary group-hover:scale-105 transition-transform">
                     {pro.name ? pro.name.charAt(0) : 'P'}
                   </div>
                   <div>
-                    <h3 className="text-xl font-serif font-bold text-brand-text mb-1 group-hover:text-brand-gold transition-colors">{pro.name || 'Professional'}</h3>
+                    <h3 className="text-xl font-serif font-bold text-brand-text mb-1 group-hover:text-brand-primary transition-colors">{pro.name || 'Professional'}</h3>
                     <p className="text-brand-textSec text-sm flex items-center gap-1">
-                      <Camera size={14} className="text-brand-gold opacity-70" />
+                      <Camera size={14} className="text-brand-primary opacity-70" />
                       {pro.profession || 'Professional'}
                     </p>
                   </div>
@@ -148,22 +151,22 @@ const Professionals = () => {
 
                 <div className="space-y-3 mb-6">
                   <div className="flex items-center gap-2 text-sm text-brand-textSec">
-                    <MapPin size={16} className="text-brand-gold/70" />
+                    <MapPin size={16} className="text-brand-primary/70" />
                     {pro.city || 'Location not specified'}, {pro.state || ''}
                   </div>
                   <div className="flex items-start gap-2 text-sm text-brand-textSec">
-                    <Calendar size={16} className="text-brand-gold/70 mt-0.5 shrink-0" />
+                    <Calendar size={16} className="text-brand-primary/70 mt-0.5 shrink-0" />
                     <div>
                       <span className="block mb-1">Available Dates:</span>
                       {pro.available_dates ? (
                         <div className="flex flex-wrap gap-1">
                           {pro.available_dates.split(',').slice(0, 3).map((d, i) => (
-                            <span key={i} className="text-[10px] bg-brand-gold/10 text-brand-gold border border-brand-gold/20 px-2 py-0.5 rounded-full">
+                            <span key={i} className="text-[10px] bg-brand-primary/10 text-brand-primary border border-brand-primary/20 px-2 py-0.5 rounded-full">
                               {new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                             </span>
                           ))}
                           {pro.available_dates.split(',').length > 3 && (
-                            <span className="text-[10px] bg-white/5 text-brand-textSec border border-gray-200 px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] bg-white/5 text-brand-textSec border border-brand-border px-2 py-0.5 rounded-full">
                               +{pro.available_dates.split(',').length - 3} more
                             </span>
                           )}
@@ -175,15 +178,15 @@ const Professionals = () => {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-200 flex flex-col gap-2">
+                <div className="pt-4 border-t border-brand-border flex flex-col gap-2">
                   <div className="flex gap-2">
-                    <button className="flex-1 py-2.5 bg-brand-gold/10 text-brand-gold font-medium rounded-xl hover:bg-brand-gold hover:text-brand-bg transition-colors flex items-center justify-center gap-2">
+                    <button className="flex-1 py-2.5 bg-brand-primary/10 text-brand-primary font-medium rounded-xl hover:bg-brand-primary hover:text-white transition-colors flex items-center justify-center gap-2">
                       View Profile
                     </button>
                     {user?.role === 'company' && (
                       <button 
                         onClick={() => handleRequestBooking(pro)}
-                        className="flex-1 py-2.5 bg-brand-gold text-brand-bg font-bold rounded-xl hover:bg-brand-goldLight transition-colors flex items-center justify-center gap-2"
+                        className="flex-1 py-2.5 bg-brand-primary text-white font-bold rounded-xl hover:bg-brand-primaryDark transition-colors flex items-center justify-center gap-2"
                       >
                         Request Booking
                       </button>
@@ -193,7 +196,7 @@ const Professionals = () => {
                     <button 
                       onClick={() => handleStartChat(pro)}
                       disabled={chatLoading}
-                      className="w-full py-2.5 bg-[#C5A880] text-white font-medium rounded-xl hover:bg-[#C5A880]/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full py-2.5 bg-brand-primary text-white font-medium rounded-xl hover:bg-brand-primaryDark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {chatLoading ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -219,11 +222,11 @@ const Professionals = () => {
     
       {/* Booking Modal */}
       {isModalOpen && selectedPro && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-bg/90 backdrop-blur-sm p-4">
-          <div className="bg-brand-surface border border-gray-200 rounded-2xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/50 backdrop-blur-sm p-4">
+          <div className="bg-brand-surface border border-brand-border rounded-2xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-brand-gold">Request {selectedPro.name}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-brand-textSec hover:text-brand-text">
+              <h2 className="text-xl font-bold text-brand-primary">Request {selectedPro.name}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-brand-textSec hover:text-brand-primary transition-colors">
                 <X size={24} />
               </button>
             </div>
@@ -238,7 +241,7 @@ const Professionals = () => {
               <button 
                 onClick={submitBookingRequest}
                 disabled={requestLoading}
-                className="w-full py-3 bg-brand-gold text-brand-bg font-bold rounded-xl hover:bg-brand-goldLight transition-colors flex items-center justify-center"
+                className="w-full py-3 bg-brand-primary text-white font-bold rounded-xl hover:bg-brand-primaryDark transition-colors flex items-center justify-center"
               >
                 {requestLoading ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-bg"></div>

@@ -15,21 +15,18 @@ import {
 } from 'recharts';
 
 const StatCard = ({ title, value, icon: Icon, trend, trendUp }) => (
-  <div className="glass-card p-6 rounded-2xl flex flex-col group hover:border-brand-gold/30 transition-colors relative overflow-hidden">
-    <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 group-hover:-rotate-12">
-      <Icon size={120} />
-    </div>
-    <div className="flex items-center justify-between mb-4 relative z-10">
-      <h3 className="text-xs font-medium text-brand-textSec uppercase tracking-wider">{title}</h3>
-      <div className="p-2 bg-brand-gold/10 text-brand-gold rounded-lg border border-brand-gold/20">
-        <Icon size={20} />
+  <div className="glass-card p-4 rounded-xl flex flex-col group hover:border-brand-primary/30 transition-colors">
+    <div className="flex items-start justify-between gap-3 mb-3">
+      <h3 className="text-[11px] font-semibold text-brand-textSec uppercase tracking-wider leading-4">{title}</h3>
+      <div className="p-1.5 bg-brand-primary/10 text-brand-primary rounded-lg shrink-0">
+        <Icon size={16} />
       </div>
     </div>
-    <div className="mt-auto relative z-10">
-      <span className="text-3xl font-serif text-brand-text">{value}</span>
+    <div className="mt-auto">
+      <span className="text-2xl font-semibold text-brand-navy tabular-nums leading-none">{value}</span>
       {trend && (
-        <p className={`text-xs mt-2 font-medium flex items-center ${trendUp ? 'text-brand-success' : 'text-brand-danger'}`}>
-          <TrendingUp size={14} className={`mr-1 ${!trendUp && 'transform rotate-180'}`} />
+        <p className={`text-[11px] mt-1.5 font-medium flex items-center ${trendUp ? 'text-brand-success' : 'text-brand-danger'}`}>
+          <TrendingUp size={12} className={`mr-1 ${!trendUp && 'transform rotate-180'}`} />
           {trend} from last month
         </p>
       )}
@@ -58,25 +55,25 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="w-full h-64 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-gold"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-brand-text">Studio Overview</h1>
-          <p className="text-sm text-brand-gold mt-1 tracking-wider uppercase">Welcome back, Director</p>
+          <h1 className="text-xl font-semibold text-brand-navy">Studio Overview</h1>
+          <p className="text-[13px] text-brand-textSec mt-0.5">Welcome back, Director</p>
         </div>
-        <button className="btn-gold text-sm shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+        <button className="px-3.5 py-2 bg-brand-primary text-white text-[13px] font-medium rounded-lg hover:bg-brand-primaryDark transition-colors">
           Export Report
         </button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard 
           title="Total Users" 
           value={stats?.summary?.totalUsers || 0} 
@@ -104,42 +101,42 @@ const Dashboard = () => {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
         {/* User Growth Chart */}
-        <div className="glass-card p-6 rounded-2xl">
-          <h3 className="text-xl font-serif font-bold text-brand-text mb-6">Network Growth</h3>
-          <div className="h-72 w-full">
+        <div className="glass-card p-4 rounded-xl">
+          <h3 className="text-sm font-semibold text-brand-navy mb-4">Network Growth</h3>
+          <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={stats?.charts?.userGrowth || []} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#A1A1AA', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#A1A1AA', fontSize: 12}} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#171A21', borderRadius: '12px', border: '1px solid #ffffff10', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)', color: '#fff' }}
-                  itemStyle={{ color: '#D4AF37' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 10px 25px -5px rgba(11, 24, 53, 0.15)', color: '#0B1835' }}
+                  itemStyle={{ color: '#DE601E' }}
                 />
-                <Line type="monotone" dataKey="users" stroke="#D4AF37" strokeWidth={3} dot={{r: 4, fill: '#D4AF37', strokeWidth: 2, stroke: '#171A21'}} activeDot={{r: 6}} />
+                <Line type="monotone" dataKey="users" stroke="#DE601E" strokeWidth={3} dot={{r: 4, fill: '#DE601E', strokeWidth: 2, stroke: '#FFFFFF'}} activeDot={{r: 6}} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Revenue Growth Chart */}
-        <div className="glass-card p-6 rounded-2xl">
-          <h3 className="text-xl font-serif font-bold text-brand-text mb-6">Revenue Overview</h3>
-          <div className="h-72 w-full">
+        <div className="glass-card p-4 rounded-xl">
+          <h3 className="text-sm font-semibold text-brand-navy mb-4">Revenue Overview</h3>
+          <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats?.charts?.revenueGrowth || []} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#A1A1AA', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#A1A1AA', fontSize: 12}} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#171A21', borderRadius: '12px', border: '1px solid #ffffff10', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)', color: '#fff' }}
-                  cursor={{fill: '#ffffff05'}}
-                  itemStyle={{ color: '#D4AF37' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 10px 25px -5px rgba(11, 24, 53, 0.15)', color: '#0B1835' }}
+                  cursor={{fill: 'rgba(222, 96, 30, 0.06)'}}
+                  itemStyle={{ color: '#DE601E' }}
                 />
-                <Bar dataKey="revenue" fill="#D4AF37" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="revenue" fill="#DE601E" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -147,17 +144,17 @@ const Dashboard = () => {
       </div>
 
       {/* Recent Activity */}
-      <div className="mt-8 glass-card p-6 rounded-2xl">
-        <h3 className="text-xl font-serif font-bold text-brand-text mb-6">Recent Activity</h3>
-        <div className="space-y-4">
+      <div className="glass-card p-4 rounded-xl">
+        <h3 className="text-sm font-semibold text-brand-navy mb-4">Recent Activity</h3>
+        <div className="space-y-1">
           {stats?.recentActivity?.map((activity) => (
-            <div key={activity.id} className="flex items-start gap-4 p-4 hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-gray-200">
-              <div className="mt-1 bg-brand-gold/10 p-2 rounded-lg text-brand-gold border border-brand-gold/20">
-                <Activity size={16} />
+            <div key={activity.id} className="flex items-start gap-3 p-2.5 hover:bg-brand-primary/5 rounded-lg transition-colors">
+              <div className="mt-0.5 bg-brand-primary/10 p-1.5 rounded-md text-brand-primary shrink-0">
+                <Activity size={14} />
               </div>
-              <div>
-                <p className="text-sm font-medium text-brand-text">{activity.action}</p>
-                <p className="text-xs text-brand-textSec mt-1">{activity.user} • {activity.time}</p>
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-brand-navy">{activity.action}</p>
+                <p className="text-[11px] text-brand-textSec mt-0.5">{activity.user} • {activity.time}</p>
               </div>
             </div>
           ))}

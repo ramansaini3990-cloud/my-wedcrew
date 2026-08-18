@@ -1,17 +1,24 @@
 import { useContext, useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import api from '../utils/api';
-import { Camera, Calendar, Star, IndianRupee, Bell, Briefcase, Settings, LogOut, ChevronRight, FileText } from 'lucide-react';
+import { Camera, Calendar, Star, IndianRupee, Bell, Briefcase, Settings, ChevronRight, FileText, MessageSquare, Menu } from 'lucide-react';
 import { motion } from 'framer-motion';
 import NotificationsView from '../components/NotificationsView';
+import SubscriptionStatusCard from '../components/SubscriptionStatusCard';
+import DashboardSidebar from '../components/dashboard/DashboardSidebar';
+import Messages from './Messages';
+import Avatar from '../components/ui/Avatar';
+import useSubscription from '../hooks/useSubscription';
 
 export default function FreelancerDashboard() {
   const { user, logout } = useContext(AuthContext);
   const socket = useSocket();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { subscription, loading: subscriptionLoading } = useSubscription();
   
   const [showModal, setShowModal] = useState(false);
   const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', city: '', profession: '', state: '', availableDates: [] });
@@ -78,10 +85,11 @@ export default function FreelancerDashboard() {
         freelancer_id: user.id || user._id,
         requirement_id: requirementId
       });
-      navigate('/messages', { state: { selectedConversation: res.data } });
+      const conversationId = res.data?.id || res.data?._id;
+      navigate('/messages', { state: { activeConversationId: conversationId } });
     } catch (e) {
       console.error(e);
-      alert('Failed to open chat.');
+      alert(e.response?.data?.message || 'Failed to open chat.');
     }
   };
 
@@ -244,112 +252,70 @@ export default function FreelancerDashboard() {
   const pendingRequestsCount = bookingRequests.filter(req => req.status === 'pending').length;
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col lg:flex-row pt-20">
-      {/* Mobile Header Dashboard Summary (visible only on small screens) */}
-      <div className="lg:hidden bg-brand-surface border-b border-gray-200 px-4 py-6">
-        <div className="flex items-center gap-4">
-          <div className="h-16 w-16 rounded-full bg-brand-bg border border-brand-gold flex items-center justify-center text-2xl font-serif text-brand-primary">
-            {user?.name?.charAt(0) || 'F'}
-          </div>
-          <div>
-            <h1 className="text-2xl font-serif font-bold text-brand-navy">
+    <div className="min-h-screen bg-brand-bg pt-20 flex">
+      <DashboardSidebar
+        profile={{ ...user, ...profileData }}
+        subtitle={profileData.profession || 'Freelancer'}
+        fallbackInitial="F"
+        tabs={[
+          { id: 'overview', label: 'Overview', icon: Camera },
+          { id: 'requests', label: 'Booking Requests', icon: Briefcase, badge: pendingRequestsCount },
+          { id: 'applications', label: 'My Applications', icon: FileText },
+          { id: 'messages', label: 'Messages', icon: MessageSquare },
+          { id: 'calendar', label: 'Availability', icon: Calendar },
+          { id: 'earnings', label: 'Earnings', icon: IndianRupee },
+          { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadNotifications },
+          { id: 'settings', label: 'Settings', icon: Settings },
+        ]}
+        activeTab={activeTab}
+        onTabSelect={setActiveTab}
+        onLogout={logout}
+        mobileOpen={sidebarOpen}
+        onCloseMobile={() => setSidebarOpen(false)}
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 min-w-0 bg-brand-bg pb-10">
+        {/* Mobile bar - opens the sidebar */}
+        <div className="lg:hidden sticky top-20 z-20 bg-brand-surface border-b border-brand-border px-3 py-2 flex items-center gap-2.5">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-1.5 rounded-md text-brand-textSec hover:text-brand-primary hover:bg-brand-primary/5 transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+          <Avatar user={{ ...user, ...profileData }} size="sm" fallback="F" />
+          <div className="min-w-0 leading-tight">
+            <p className="text-[13px] font-semibold text-brand-navy truncate">
               {profileData.name || user?.name || 'Freelancer'}
-            </h1>
-            <p className="text-brand-primary text-xs tracking-widest uppercase">
-              {profileData.profession ? `Verified ${profileData.profession}` : 'Freelancer'}
+            </p>
+            <p className="text-[11px] text-brand-textSec truncate">
+              {profileData.profession || 'Freelancer'}
             </p>
           </div>
         </div>
-      </div>
 
-      {/* Sidebar Navigation */}
-      <aside className="w-full lg:w-72 lg:fixed lg:h-[calc(100vh-5rem)] bg-brand-surface border-r border-gray-200 overflow-y-auto custom-scrollbar flex flex-col">
-        <div className="p-6 hidden lg:block border-b border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-brand-bg border border-brand-gold flex items-center justify-center text-2xl font-serif text-brand-primary">
-              {user?.name?.charAt(0) || 'F'}
-            </div>
-            <div>
-              <h1 className="text-xl font-serif font-bold text-brand-navy line-clamp-1">
-                {profileData.name || user?.name || 'Freelancer'}
-              </h1>
-              <p className="text-brand-primary text-xs tracking-widest uppercase">
-                {profileData.profession || 'Freelancer'}
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-5 py-5 space-y-5">
+          
+          {activeTab === 'earnings' && (
+            <div className="animate-fade-in flex flex-col items-center justify-center p-10 bg-brand-surface rounded-xl border border-brand-border">
+              <div className="h-11 w-11 bg-brand-primary/10 text-brand-primary rounded-xl flex items-center justify-center mb-3">
+                <IndianRupee size={20} />
+              </div>
+              <h2 className="text-sm font-semibold text-brand-navy">Earnings</h2>
+              <p className="text-[13px] text-brand-textSec text-center max-w-md mt-1">
+                This module is currently being updated to match the new premium experience. Check back soon.
               </p>
             </div>
-          </div>
-        </div>
-        
-        <nav className="p-4 flex-1 space-y-1">
-          {[
-            { id: 'overview', label: 'Overview', icon: Camera },
-            { id: 'requests', label: 'Booking Requests', icon: Briefcase },
-            { id: 'applications', label: 'My Applications', icon: FileText },
-            { id: 'messages', label: 'Messages', icon: Briefcase, path: '/messages' },
-            { id: 'calendar', label: 'Availability', icon: Calendar },
-            { id: 'earnings', label: 'Earnings', icon: IndianRupee },
-            { id: 'notifications', label: 'Notifications', icon: Bell },
-            { id: 'settings', label: 'Settings', icon: Settings },
-          ].map((tab) => (
-            tab.path ? (
-              <Link
-                key={tab.id}
-                to={tab.path}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
-                  activeTab === tab.id ? 'bg-brand-primary text-white' : 'text-brand-textSec hover:bg-gray-50 hover:text-brand-navy'
-                }`}
-              >
-                <div className="flex items-center gap-3 text-sm">
-                  <tab.icon size={18} className={activeTab === tab.id ? "text-white" : "text-brand-textSec"} />
-                  {tab.label}
-                </div>
-                {tab.id === 'notifications' && unreadNotifications > 0 && (
-                  <span className="bg-brand-danger text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    {unreadNotifications}
-                  </span>
-                )}
-              </Link>
-            ) : (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
-                  activeTab === tab.id ? 'bg-brand-primary text-white' : 'text-brand-textSec hover:bg-gray-50 hover:text-brand-navy'
-                }`}
-              >
-                <div className="flex items-center gap-3 text-sm">
-                  <tab.icon size={18} className={activeTab === tab.id ? "text-white" : "text-brand-textSec"} />
-                  {tab.label}
-                </div>
-                {tab.id === 'requests' && pendingRequestsCount > 0 && (
-                  <span className="bg-brand-gold text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    {pendingRequestsCount}
-                  </span>
-                )}
-                {tab.id === 'notifications' && unreadNotifications > 0 && (
-                  <span className="bg-brand-danger text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    {unreadNotifications}
-                  </span>
-                )}
-              </button>
-            )
-          ))}
-        </nav>
-        
-        <div className="p-4 border-t border-gray-100">
-          <button 
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-brand-textSec hover:bg-red-50 hover:text-brand-danger transition-colors text-sm font-medium"
-          >
-            <LogOut size={18} /> Logout
-          </button>
-        </div>
-      </aside>
+          )}
 
-      {/* Main Content Area */}
-      <main className="flex-1 lg:ml-72 min-h-screen bg-brand-bg pb-12">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10 space-y-8">
-          
+          {activeTab === 'messages' && (
+            <div className="animate-fade-in -mx-4 sm:-mx-5 -my-5">
+              <Messages embedded />
+            </div>
+          )}
+
           {activeTab === 'overview' && (
             <div className="animate-fade-in space-y-8">
               <div className="mb-6">
@@ -357,10 +323,13 @@ export default function FreelancerDashboard() {
                 <p className="text-brand-textSec text-sm mt-1">Monitor your bookings, availability, and earnings.</p>
               </div>
 
+              {/* Subscription status - values come from GET /api/subscriptions/me */}
+              <SubscriptionStatusCard subscription={subscription} loading={subscriptionLoading} />
+
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((stat, i) => (
-                  <div key={i} className="bg-brand-surface p-6 rounded-xl border border-gray-200 shadow-sm hover:border-brand-gold/30 transition-all group">
+                  <div key={i} className="bg-brand-surface p-6 rounded-xl border border-brand-border shadow-sm hover:border-brand-primary/30 transition-all group">
                     <div className="flex justify-between items-start mb-4">
                       <div className="p-2.5 bg-brand-primary/5 rounded-lg group-hover:bg-brand-primary/10 transition-colors">
                         <stat.icon size={20} className="text-brand-primary" />
@@ -375,15 +344,15 @@ export default function FreelancerDashboard() {
               </div>
 
               {/* Profile Status Card */}
-              <div className="bg-brand-surface rounded-xl border border-brand-gold/20 p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-sm">
-                <div className="absolute top-0 left-0 w-1 h-full bg-brand-gold"></div>
+              <div className="bg-brand-surface rounded-xl border border-brand-primary/20 p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-sm">
+                <div className="absolute top-0 left-0 w-1 h-full bg-brand-primary"></div>
                 <div>
                   <h3 className="text-lg font-serif font-bold text-brand-navy mb-1">Signature Membership Active</h3>
                   <p className="text-sm text-brand-textSec max-w-md">
                     You are currently enjoying priority listing and unlimited booking responses. Your plan renews soon.
                   </p>
                 </div>
-                <button className="px-6 py-2.5 bg-brand-bg border border-brand-gold text-brand-gold text-sm font-medium rounded-lg hover:bg-brand-gold/5 transition-colors whitespace-nowrap">
+                <button className="px-6 py-2.5 bg-brand-bg border border-brand-primary text-brand-primary text-sm font-medium rounded-lg hover:bg-brand-primary/5 transition-colors whitespace-nowrap">
                   Manage Subscription
                 </button>
               </div>
@@ -399,10 +368,10 @@ export default function FreelancerDashboard() {
                 </div>
               </div>
               
-              <div className="bg-brand-surface rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                <div className="divide-y divide-gray-100">
+              <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden shadow-sm">
+                <div className="divide-y divide-brand-border">
                   {bookingRequests.length > 0 ? bookingRequests.map((item) => (
-                    <div key={item.id} className="p-6 hover:bg-gray-50/50 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                    <div key={item.id} className="p-6 hover:bg-brand-bg/50 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                       <div className="flex gap-4 items-start sm:items-center">
                         <div className="w-12 h-12 rounded-lg bg-brand-primary/5 flex items-center justify-center shrink-0">
                           <Briefcase className="text-brand-primary" size={20} />
@@ -415,7 +384,7 @@ export default function FreelancerDashboard() {
                           <span className={`text-[10px] uppercase tracking-wider font-bold mt-3 inline-block px-2.5 py-1 rounded-md ${
                             item.status === 'accepted' ? 'bg-green-100 text-green-700' : 
                             item.status === 'declined' ? 'bg-red-100 text-red-700' : 
-                            'bg-brand-gold/10 text-brand-gold'
+                            'bg-brand-primary/10 text-brand-primary'
                           }`}>
                             {item.status}
                           </span>
@@ -431,7 +400,7 @@ export default function FreelancerDashboard() {
                           </button>
                           <button 
                             onClick={() => handleRequestAction(item.id, 'declined')}
-                            className="flex-1 sm:flex-none px-5 py-2 bg-white border border-gray-200 text-brand-textSec hover:bg-gray-50 hover:text-brand-danger rounded-lg text-sm font-medium transition-colors"
+                            className="flex-1 sm:flex-none px-5 py-2 bg-white border border-brand-border text-brand-textSec hover:bg-brand-bg hover:text-brand-danger rounded-lg text-sm font-medium transition-colors"
                           >
                             Decline
                           </button>
@@ -457,7 +426,7 @@ export default function FreelancerDashboard() {
                 <p className="text-brand-textSec text-sm mt-1">Set your working days and let clients know when you're free.</p>
               </div>
               
-              <div className="bg-brand-surface p-6 sm:p-8 rounded-xl border border-gray-200 shadow-sm space-y-8">
+              <div className="bg-brand-surface p-6 sm:p-8 rounded-xl border border-brand-border shadow-sm space-y-8">
                 {/* Add Dates Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* Date Range Option */}
@@ -465,7 +434,7 @@ export default function FreelancerDashboard() {
                     <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider">Add Date Range</label>
                     <div className="space-y-3">
                       <div className="flex flex-col sm:flex-row gap-3">
-                        <label className="flex-1 flex items-center gap-2 bg-brand-bg border border-gray-200 rounded-lg px-3 focus-within:border-brand-primary transition-all">
+                        <label className="flex-1 flex items-center gap-2 bg-brand-bg border border-brand-border rounded-lg px-3 focus-within:border-brand-primary transition-all">
                           <Calendar className="text-brand-textSec shrink-0" size={16} />
                           <input 
                             type="date" 
@@ -477,7 +446,7 @@ export default function FreelancerDashboard() {
                           />
                         </label>
                         <span className="text-brand-textSec text-sm font-medium flex items-center px-1">to</span>
-                        <label className="flex-1 flex items-center gap-2 bg-brand-bg border border-gray-200 rounded-lg px-3 focus-within:border-brand-primary transition-all">
+                        <label className="flex-1 flex items-center gap-2 bg-brand-bg border border-brand-border rounded-lg px-3 focus-within:border-brand-primary transition-all">
                           <Calendar className="text-brand-textSec shrink-0" size={16} />
                           <input 
                             type="date" 
@@ -503,7 +472,7 @@ export default function FreelancerDashboard() {
                   <div className="space-y-3">
                     <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider">Or Add Entire Month</label>
                     <div className="space-y-3">
-                      <label className="w-full flex items-center gap-2 bg-brand-bg border border-gray-200 rounded-lg px-3 focus-within:border-brand-primary transition-all">
+                      <label className="w-full flex items-center gap-2 bg-brand-bg border border-brand-border rounded-lg px-3 focus-within:border-brand-primary transition-all">
                         <Calendar className="text-brand-textSec shrink-0" size={16} />
                         <input 
                           type="month" 
@@ -526,7 +495,7 @@ export default function FreelancerDashboard() {
                 </div>
 
                 {/* Selected Dates Display */}
-                <div className="pt-8 border-t border-gray-100">
+                <div className="pt-8 border-t border-brand-border">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-bold text-brand-navy uppercase tracking-wider">Upcoming Availability</h3>
                     <div className="flex items-center gap-3">
@@ -538,13 +507,13 @@ export default function FreelancerDashboard() {
                           Clear All
                         </button>
                       )}
-                      <span className="text-xs font-bold px-2.5 py-1 bg-brand-gold/10 text-brand-gold rounded-md">
+                      <span className="text-xs font-bold px-2.5 py-1 bg-brand-primary/10 text-brand-primary rounded-md">
                         {profileData.availableDates.length} Selected
                       </span>
                     </div>
                   </div>
                   
-                  <div className="bg-brand-bg rounded-xl p-4 border border-gray-100 min-h-[120px] max-h-[300px] overflow-y-auto custom-scrollbar">
+                  <div className="bg-brand-bg rounded-xl p-4 border border-brand-border min-h-[120px] max-h-[300px] overflow-y-auto custom-scrollbar">
                     {profileData.availableDates.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center text-center opacity-60 py-6">
                         <Calendar size={28} className="mb-2 text-brand-textSec" />
@@ -553,7 +522,7 @@ export default function FreelancerDashboard() {
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         {profileData.availableDates.map(d => (
-                          <div key={d} className="flex items-center gap-1.5 bg-white border border-gray-200 hover:border-brand-primary/30 pl-3 pr-1 py-1.5 rounded-lg text-xs shadow-sm group transition-all">
+                          <div key={d} className="flex items-center gap-1.5 bg-white border border-brand-border hover:border-brand-primary/30 pl-3 pr-1 py-1.5 rounded-lg text-xs shadow-sm group transition-all">
                             <span className="text-brand-navy font-medium">{new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                             <button 
                               onClick={() => handleRemoveDate(d)} 
@@ -588,7 +557,7 @@ export default function FreelancerDashboard() {
                 <p className="text-brand-textSec text-sm mt-1">Update your professional details and location.</p>
               </div>
               
-              <div className="bg-brand-surface p-6 sm:p-8 rounded-xl border border-gray-200 shadow-sm">
+              <div className="bg-brand-surface p-6 sm:p-8 rounded-xl border border-brand-border shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider mb-2">Full Name</label>
@@ -596,7 +565,7 @@ export default function FreelancerDashboard() {
                       type="text" 
                       value={profileData.name}
                       onChange={(e) => setProfileData({...profileData, name: e.target.value})}
-                      className="w-full bg-brand-bg border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary transition-colors"
+                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 transition-colors"
                     />
                   </div>
                   <div>
@@ -605,7 +574,7 @@ export default function FreelancerDashboard() {
                       type="email" 
                       value={profileData.email}
                       disabled
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-brand-textSec cursor-not-allowed"
+                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-textSec cursor-not-allowed"
                     />
                   </div>
                   <div>
@@ -614,7 +583,7 @@ export default function FreelancerDashboard() {
                       type="tel" 
                       value={profileData.phone}
                       onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                      className="w-full bg-brand-bg border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary transition-colors"
+                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 transition-colors"
                     />
                   </div>
                   <div>
@@ -623,7 +592,7 @@ export default function FreelancerDashboard() {
                       type="text" 
                       value={profileData.profession}
                       onChange={(e) => setProfileData({...profileData, profession: e.target.value})}
-                      className="w-full bg-brand-bg border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary transition-colors"
+                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 transition-colors"
                       placeholder="e.g. Photographer, Makeup Artist"
                     />
                   </div>
@@ -633,7 +602,7 @@ export default function FreelancerDashboard() {
                       type="text" 
                       value={profileData.city}
                       onChange={(e) => setProfileData({...profileData, city: e.target.value})}
-                      className="w-full bg-brand-bg border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary transition-colors"
+                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 transition-colors"
                     />
                   </div>
                   <div>
@@ -641,7 +610,7 @@ export default function FreelancerDashboard() {
                     <select 
                       value={profileData.state}
                       onChange={(e) => setProfileData({...profileData, state: e.target.value})}
-                      className="w-full bg-brand-bg border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary transition-colors custom-scrollbar"
+                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 transition-colors custom-scrollbar"
                     >
                       <option value="">Select State</option>
                       <option value="Andhra Pradesh">Andhra Pradesh</option>
@@ -684,7 +653,7 @@ export default function FreelancerDashboard() {
                   </div>
                 </div>
                 
-                <div className="flex justify-end pt-8 mt-4 border-t border-gray-100">
+                <div className="flex justify-end pt-8 mt-4 border-t border-brand-border">
                   <button 
                     onClick={handleSaveProfile}
                     disabled={isSaving}
@@ -709,13 +678,13 @@ export default function FreelancerDashboard() {
               {loadingApps ? (
                 <div className="text-center py-12 text-brand-textSec">Loading applications...</div>
               ) : myApplications.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-brand-textSec">
+                <div className="bg-white rounded-xl border border-brand-border p-12 text-center text-brand-textSec">
                   You haven't applied to any requirements yet.
                 </div>
               ) : (
                 <div className="grid gap-4">
                   {myApplications.map(app => (
-                    <div key={app.id} className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div key={app.id} className="bg-white rounded-xl border border-brand-border p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                       <div>
                         <h4 className="font-bold text-brand-navy text-lg">{app.requirement_id?.category || 'Requirement'}</h4>
                         <p className="text-brand-textSec font-medium">{app.company_id?.name || 'Company'}</p>
@@ -757,7 +726,7 @@ export default function FreelancerDashboard() {
                   <p className="text-brand-textSec mt-1">Stay updated with your latest applications and messages</p>
                 </div>
               </div>
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="bg-white rounded-xl border border-brand-border overflow-hidden shadow-sm">
                 <NotificationsView 
                   onNotificationClick={(notif) => {
                     if (notif.application_id || notif.type.includes('application')) {
