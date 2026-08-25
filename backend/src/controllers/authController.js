@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { logActivity } from '../services/activityService.js';
 
 // Generate JWT Token
 const generateToken = (user) => {
@@ -46,6 +47,18 @@ export const registerUser = async (req, res) => {
       profession: profession || null
     });
 
+    // Audit trail. logActivity never throws, so registration cannot fail here.
+    await logActivity({
+      eventType: `user.registered.${user.role}`,
+      category: 'users',
+      severity: 'success',
+      title: 'New user registered',
+      description: `${user.name} joined as a ${user.role}`,
+      actor: { userId: user._id, name: user.name, role: user.role },
+      target: { type: 'user', id: user._id, label: user.name },
+      metadata: { account_type: user.role, city: user.city || undefined, state: user.state || undefined }
+    });
+
     res.status(201).json({
       message: 'User registered successfully',
       userId: user.id
@@ -80,6 +93,16 @@ export const loginUser = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    await logActivity({
+      eventType: user.role === 'admin' ? 'admin.login' : 'user.login',
+      category: user.role === 'admin' ? 'admin' : 'users',
+      title: user.role === 'admin' ? 'Admin signed in' : 'User signed in',
+      description: `${user.name} signed in`,
+      actor: { userId: user._id, name: user.name, role: user.role },
+      target: { type: 'user', id: user._id, label: user.name },
+      metadata: { account_type: user.role }
+    });
 
     // Generate token and return user details
     res.json({

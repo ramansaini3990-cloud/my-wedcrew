@@ -1,6 +1,7 @@
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import { canChat, SUBSCRIPTION_ERRORS } from '../services/subscriptionService.js';
+import { logFromRequest } from '../services/activityService.js';
 import {
   getUnreadCountsByConversation,
   markConversationRead,
@@ -123,6 +124,17 @@ export const createConversation = async (req, res) => {
       });
       await conversation.save();
       created = true;
+    }
+
+    if (created) {
+      await logFromRequest(req, {
+        eventType: 'conversation.created',
+        category: 'messages',
+        title: 'New conversation created',
+        description: 'A company and professional were connected',
+        target: { type: 'conversation', id: conversation._id },
+        metadata: { conversation_id: String(conversation._id) }
+      });
     }
 
     const access = await canChat(company_id, freelancer_id);

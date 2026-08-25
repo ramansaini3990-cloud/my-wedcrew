@@ -6,9 +6,15 @@ import User from './models/User.js';
 import Notification from './models/Notification.js';
 import { canChat, SUBSCRIPTION_ERRORS } from './services/subscriptionService.js';
 import { countUnreadForConversation } from './services/chatUnreadService.js';
+import { logActivity } from './services/activityService.js';
 
 let io;
 const userSockets = new Map(); // userId -> socketId
+
+// Socket.IO room that only authenticated admins are placed into. Membership is
+// decided server-side from the verified JWT role, so a non-admin can never
+// subscribe to the admin activity stream.
+const ADMIN_ROOM = 'admin:activity';
 
 /**
  * Notifies a user that somebody tried to message them while their subscription
@@ -71,6 +77,11 @@ export const initSocket = (server) => {
   io.on('connection', (socket) => {
     console.log(`User connected: ${socket.user.id}`);
     userSockets.set(socket.user.id, socket.id);
+
+    // Admins additionally join the activity room.
+    if (socket.user.role === 'admin') {
+      socket.join(ADMIN_ROOM);
+    }
 
     socket.on('join_conversation', (conversationId) => {
       socket.join(conversationId);
@@ -162,6 +173,21 @@ export const initSocket = (server) => {
 
         io.to(conversationId).emit('receive_message', message);
 
+        // Audit only that a message occurred - the body is never recorded.
+        {
+          const senderUser = await User.findById(senderId).select('name role');
+          const targetUser = await User.findById(resolvedReceiverId).select('name');
+          await logActivity({
+            eventType: 'message.sent',
+            category: 'messages',
+            title: 'New message',
+            description: `${senderUser?.name || 'A user'} → ${targetUser?.name || 'a user'}`,
+            actor: { userId: senderId, name: senderUser?.name, role: senderUser?.role },
+            target: { type: 'conversation', id: conversationId, label: targetUser?.name },
+            metadata: { conversation_id: String(conversationId) }
+          });
+        }
+
         // Chat messages deliberately do NOT create a system Notification.
         // Unread state lives on the conversation (Message.read_at) and is
         // pushed to the recipient as a conversation-scoped socket event, so the
@@ -203,6 +229,15 @@ export const initSocket = (server) => {
 export const getIo = () => {
   if (!io) throw new Error('Socket.io not initialized!');
   return io;
+};
+
+/**
+ * Pushes a new activity entry to every connected admin.
+ * Safe to call before Socket.IO is initialised (scripts, tests) - it no-ops.
+ */
+export const emitAdminActivity = (activity) => {
+  if (!io || !activity) return;
+  io.to(ADMIN_ROOM).emit('activity:new', activity);
 };
 
 export const emitNotification = (userId, notification) => {

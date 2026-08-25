@@ -2,6 +2,7 @@ import Application from '../models/Application.js';
 import Requirement from '../models/Requirement.js';
 import Notification from '../models/Notification.js';
 import { emitNotification } from '../socket.js';
+import { logFromRequest } from '../services/activityService.js';
 
 export const createApplication = async (req, res) => {
   try {
@@ -41,6 +42,15 @@ export const createApplication = async (req, res) => {
     await notification.save();
     emitNotification(requirement.company_id, notification);
 
+    await logFromRequest(req, {
+      eventType: 'application.created',
+      category: 'applications',
+      title: 'New application submitted',
+      description: `${req.user.name} applied for ${requirement.category}`,
+      target: { type: 'application', id: application._id, label: requirement.category },
+      metadata: { category: requirement.category, city: requirement.city, requirement_id: String(requirement._id), status: 'pending' }
+    });
+
     res.status(201).json({ success: true, data: application });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -68,6 +78,16 @@ export const getMyApplicationForRequirement = async (req, res) => {
     const { requirementId } = req.params;
     const freelancer_id = req.user.id || req.user._id;
     const application = await Application.findOne({ requirement_id: requirementId, freelancer_id });
+    await logFromRequest(req, {
+      eventType: `application.${status}`,
+      category: 'applications',
+      severity: status === 'accepted' ? 'success' : status === 'rejected' ? 'warning' : 'info',
+      title: `Application ${status}`,
+      description: `${application.requirement_id.category} application ${status}`,
+      target: { type: 'application', id: application._id, label: application.requirement_id.category },
+      metadata: { status, category: application.requirement_id.category }
+    });
+
     res.json({ success: true, data: application });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -129,6 +149,16 @@ export const updateApplicationStatus = async (req, res) => {
       await notification.save();
       emitNotification(application.freelancer_id, notification);
     }
+
+    await logFromRequest(req, {
+      eventType: `application.${status}`,
+      category: 'applications',
+      severity: status === 'accepted' ? 'success' : status === 'rejected' ? 'warning' : 'info',
+      title: `Application ${status}`,
+      description: `${application.requirement_id.category} application ${status}`,
+      target: { type: 'application', id: application._id, label: application.requirement_id.category },
+      metadata: { status, category: application.requirement_id.category }
+    });
 
     res.json({ success: true, data: application });
   } catch (error) {

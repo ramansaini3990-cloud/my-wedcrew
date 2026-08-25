@@ -11,6 +11,9 @@ import DashboardSidebar from '../components/dashboard/DashboardSidebar';
 import Messages from './Messages';
 import Avatar from '../components/ui/Avatar';
 import useSubscription from '../hooks/useSubscription';
+import ProfileForm from '../components/profile/ProfileForm';
+import ProfileSummaryCard from '../components/dashboard/ProfileSummaryCard';
+import useMyProfile from '../hooks/useMyProfile';
 
 export default function CompanyDashboard() {
   const { user, logout } = useContext(AuthContext);
@@ -19,6 +22,7 @@ export default function CompanyDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { subscription, loading: subscriptionLoading } = useSubscription();
+  const { profile: myProfile, loading: myProfileLoading } = useMyProfile();
   const [myRequirements, setMyRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -147,8 +151,10 @@ export default function CompanyDashboard() {
   return (
     <div className="min-h-screen bg-brand-bg pt-20 flex">
       <DashboardSidebar
-        profile={user}
-        subtitle="Production House"
+        profile={{ ...user, ...(myProfile || {}) }}
+        subtitle={[myProfile?.profession || 'Production House', myProfile?.city]
+          .filter(Boolean)
+          .join(' · ')}
         fallbackInitial="C"
         topAction={
           <Link
@@ -209,6 +215,42 @@ export default function CompanyDashboard() {
                 <h2 className="text-2xl font-serif font-bold text-brand-navy">Studio Overview</h2>
                 <p className="text-brand-textSec text-sm mt-1">Manage your active shoots, crews, and postings.</p>
               </div>
+
+              {/* Profile summary - real data from GET /api/profile/me */}
+              <ProfileSummaryCard
+                profile={myProfile}
+                loading={myProfileLoading}
+                role="company"
+                onEdit={() => setActiveTab('settings')}
+                quickActions={
+                  <>
+                    <Link
+                      to="/company/requirements/new"
+                      className="px-3 py-1.5 rounded-lg border border-brand-border text-[12px] font-semibold text-brand-navy hover:border-brand-primary hover:text-brand-primary transition-colors"
+                    >
+                      Post Requirement
+                    </Link>
+                    <Link
+                      to="/freelancers"
+                      className="px-3 py-1.5 rounded-lg border border-brand-border text-[12px] font-semibold text-brand-navy hover:border-brand-primary hover:text-brand-primary transition-colors"
+                    >
+                      Find Professionals
+                    </Link>
+                    <button
+                      onClick={() => setActiveTab('requirements')}
+                      className="px-3 py-1.5 rounded-lg border border-brand-border text-[12px] font-semibold text-brand-navy hover:border-brand-primary hover:text-brand-primary transition-colors"
+                    >
+                      Manage Requirements
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('messages')}
+                      className="px-3 py-1.5 rounded-lg border border-brand-border text-[12px] font-semibold text-brand-navy hover:border-brand-primary hover:text-brand-primary transition-colors"
+                    >
+                      Messages
+                    </button>
+                  </>
+                }
+              />
 
               {/* Subscription status - values come from GET /api/subscriptions/me */}
               <SubscriptionStatusCard subscription={subscription} loading={subscriptionLoading} />
@@ -494,7 +536,19 @@ export default function CompanyDashboard() {
           )}
 
           {/* Fallback for other tabs not explicitly implemented but handled elegantly */}
-          {['search', 'favorites', 'settings'].includes(activeTab) && (
+          {activeTab === 'settings' && (
+            <div className="animate-fade-in space-y-5">
+              <div>
+                <h2 className="text-xl font-semibold text-brand-navy">Company Settings</h2>
+                <p className="text-[13px] text-brand-textSec mt-0.5">
+                  Manage your production house profile, category and location.
+                </p>
+              </div>
+              <ProfileForm role="company" />
+            </div>
+          )}
+
+          {['search', 'favorites'].includes(activeTab) && (
             <div className="animate-fade-in flex flex-col items-center justify-center p-10 bg-brand-surface rounded-xl border border-brand-border">
               <div className="h-11 w-11 bg-brand-primary/10 text-brand-primary rounded-xl flex items-center justify-center mb-3">
                 <Settings size={20} />

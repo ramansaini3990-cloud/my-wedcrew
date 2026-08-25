@@ -8,6 +8,7 @@ import {
   evaluateSubscriptionStatus
 } from '../services/subscriptionService.js';
 import { DEFAULT_PLANS } from '../config/defaultPlans.js';
+import { logFromRequest } from '../services/activityService.js';
 
 const now = () => new Date();
 
@@ -245,6 +246,35 @@ export const assignSubscription = async (req, res) => {
     await subscription.save();
     await supersedeOtherSubscriptions(user_id, subscription._id);
 
+    await logFromRequest(req, {
+      eventType: 'subscription.created',
+      category: 'subscriptions',
+      severity: 'success',
+      title: 'New subscription created',
+      description: `${user.name} assigned the ${plan.name} plan`,
+      target: { type: 'subscription', id: subscription._id, label: user.name },
+      metadata: {
+        plan_name: plan.name,
+        amount: subscription.amount,
+        currency: plan.currency,
+        status: subscription.status,
+        source: subscription.source,
+        account_type: user.role
+      }
+    });
+
+    // Admin-granted plans are marked paid without a gateway; record the
+    // settlement separately so payments can be audited on their own.
+    await logFromRequest(req, {
+      eventType: 'payment.completed',
+      category: 'payments',
+      severity: 'success',
+      title: 'Payment completed',
+      description: `${plan.name} subscription · ${plan.currency || 'INR'} ${subscription.amount}`,
+      target: { type: 'subscription', id: subscription._id, label: user.name },
+      metadata: { plan_name: plan.name, amount: subscription.amount, currency: plan.currency, source: subscription.source }
+    });
+
     const summary = await getSubscriptionSummary(user_id);
     res.status(201).json({ success: true, data: subscription, subscription: summary });
   } catch (error) {
@@ -274,6 +304,7 @@ export const updateSubscriptionStatus = async (req, res) => {
     if (!subscription) {
       return res.status(404).json({ code: 'SUBSCRIPTION_NOT_FOUND', message: 'Subscription not found' });
     }
+    const previousStatus = subscription.status;
 
     if (status === 'active') {
       // Reactivating a lapsed subscription needs a future expiry to be usable.
@@ -297,6 +328,16 @@ export const updateSubscriptionStatus = async (req, res) => {
       await subscription.save();
       await terminateAllSubscriptions(subscription.user_id, status);
     }
+
+    await logFromRequest(req, {
+      eventType: `subscription.${status}`,
+      category: 'subscriptions',
+      severity: status === 'active' ? 'success' : status === 'cancelled' ? 'warning' : 'info',
+      title: `Subscription ${status}`,
+      description: `${subscription.plan_name} plan set to ${status}`,
+      target: { type: 'subscription', id: subscription._id, label: subscription.plan_name },
+      metadata: { plan_name: subscription.plan_name, status, previous_status: previousStatus }
+    });
 
     const summary = await getSubscriptionSummary(subscription.user_id);
     res.json({ success: true, data: subscription, subscription: summary });

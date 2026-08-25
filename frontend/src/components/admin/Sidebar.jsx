@@ -12,6 +12,7 @@ import {
   Bell,
   Activity,
   Settings,
+  Database,
   X
 } from 'lucide-react';
 
@@ -30,7 +31,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         { name: 'Freelancers', path: '/admin/freelancers', icon: Users },
         { name: 'Companies', path: '/admin/companies', icon: Briefcase },
         { name: 'Requirements', path: '/admin/requirements', icon: ListTodo },
-        { name: 'Availability', path: '/admin/availability', icon: Calendar }
+        { name: 'Availability', path: '/admin/availability', icon: Calendar },
+        { name: 'Master Data', path: '/admin/master-data', icon: Database }
       ]
     },
     {

@@ -1,5 +1,6 @@
 import Requirement from '../models/Requirement.js';
 import { hasActiveSubscription } from '../services/subscriptionService.js';
+import { logFromRequest } from '../services/activityService.js';
 
 // @desc    Create a new requirement
 // @route   POST /api/requirements
@@ -32,6 +33,22 @@ export const createRequirement = async (req, res) => {
       food: food || false, 
       description: description || null,
       status: status || 'draft'
+    });
+
+    await logFromRequest(req, {
+      eventType: 'requirement.created',
+      category: 'requirements',
+      severity: 'success',
+      title: 'Requirement posted',
+      description: `${requirement.category}${requirement.city ? ' · ' + requirement.city : ''}`,
+      target: { type: 'requirement', id: requirement._id, label: requirement.category },
+      metadata: {
+        category: requirement.category,
+        city: requirement.city,
+        state: requirement.state,
+        quantity: requirement.quantity,
+        status: requirement.status
+      }
     });
 
     res.status(201).json({
@@ -195,6 +212,15 @@ export const updateRequirement = async (req, res) => {
       description, status
     });
 
+    await logFromRequest(req, {
+      eventType: 'requirement.updated',
+      category: 'requirements',
+      title: 'Requirement updated',
+      description: `${requirement.category}${requirement.city ? ' · ' + requirement.city : ''}`,
+      target: { type: 'requirement', id: requirement._id, label: requirement.category },
+      metadata: { category: requirement.category, city: requirement.city }
+    });
+
     res.json({ message: 'Requirement updated successfully' });
   } catch (error) {
     console.error('Update requirement error:', error);
@@ -225,6 +251,16 @@ export const updateRequirementStatus = async (req, res) => {
 
     requirement.status = status;
     await requirement.save();
+
+    await logFromRequest(req, {
+      eventType: status === 'closed' ? 'requirement.closed' : `requirement.${status}`,
+      category: 'requirements',
+      severity: status === 'closed' ? 'warning' : 'info',
+      title: `Requirement ${status}`,
+      description: `${requirement.category}${requirement.city ? ' · ' + requirement.city : ''}`,
+      target: { type: 'requirement', id: requirement._id, label: requirement.category },
+      metadata: { status, category: requirement.category, city: requirement.city }
+    });
 
     res.json({ message: 'Requirement status updated successfully', requirement });
   } catch (error) {

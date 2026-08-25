@@ -11,6 +11,11 @@ import chatRoutes from './routes/chatRoutes.js';
 import applicationRoutes from './routes/applicationRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
+import masterRoutes from './routes/masterRoutes.js';
+import adminMasterRoutes from './routes/adminMasterRoutes.js';
+import profileRoutes from './routes/profileRoutes.js';
+import availabilityRoutes from './routes/availabilityRoutes.js';
+import activityLogRoutes from './routes/activityLogRoutes.js';
 
 const app = express();
 
@@ -36,6 +41,11 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/master', masterRoutes);              // public read-only master data
+app.use('/api/admin/master', adminMasterRoutes);   // admin-only master data CRUD
+app.use('/api/profile', profileRoutes);            // freelancer + company profile
+app.use('/api/availability', availabilityRoutes);  // travel & availability blocks
+app.use('/api/admin/activity-logs', activityLogRoutes); // admin-only activity stream
 
 // Base route
 app.get('/', (req, res) => {

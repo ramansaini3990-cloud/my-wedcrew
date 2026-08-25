@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import api from '../utils/api';
@@ -11,6 +11,10 @@ import DashboardSidebar from '../components/dashboard/DashboardSidebar';
 import Messages from './Messages';
 import Avatar from '../components/ui/Avatar';
 import useSubscription from '../hooks/useSubscription';
+import ProfileForm from '../components/profile/ProfileForm';
+import ProfileSummaryCard from '../components/dashboard/ProfileSummaryCard';
+import useMyProfile from '../hooks/useMyProfile';
+import TravelAvailability from '../components/profile/TravelAvailability';
 
 export default function FreelancerDashboard() {
   const { user, logout } = useContext(AuthContext);
@@ -19,6 +23,7 @@ export default function FreelancerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { subscription, loading: subscriptionLoading } = useSubscription();
+  const { profile: myProfile, loading: myProfileLoading } = useMyProfile();
   
   const [showModal, setShowModal] = useState(false);
   const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', city: '', profession: '', state: '', availableDates: [] });
@@ -254,8 +259,10 @@ export default function FreelancerDashboard() {
   return (
     <div className="min-h-screen bg-brand-bg pt-20 flex">
       <DashboardSidebar
-        profile={{ ...user, ...profileData }}
-        subtitle={profileData.profession || 'Freelancer'}
+        profile={{ ...user, ...profileData, ...(myProfile || {}) }}
+        subtitle={[myProfile?.profession || profileData.profession, myProfile?.city]
+          .filter(Boolean)
+          .join(' · ') || 'Freelancer'}
         fallbackInitial="F"
         tabs={[
           { id: 'overview', label: 'Overview', icon: Camera },
@@ -322,6 +329,42 @@ export default function FreelancerDashboard() {
                 <h2 className="text-2xl font-serif font-bold text-brand-navy">Dashboard Overview</h2>
                 <p className="text-brand-textSec text-sm mt-1">Monitor your bookings, availability, and earnings.</p>
               </div>
+
+              {/* Profile summary - real data from GET /api/profile/me */}
+              <ProfileSummaryCard
+                profile={myProfile}
+                loading={myProfileLoading}
+                role="freelancer"
+                onEdit={() => setActiveTab('settings')}
+                quickActions={
+                  <>
+                    <button
+                      onClick={() => setActiveTab('calendar')}
+                      className="px-3 py-1.5 rounded-lg border border-brand-border text-[12px] font-semibold text-brand-navy hover:border-brand-primary hover:text-brand-primary transition-colors"
+                    >
+                      Manage Availability
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('applications')}
+                      className="px-3 py-1.5 rounded-lg border border-brand-border text-[12px] font-semibold text-brand-navy hover:border-brand-primary hover:text-brand-primary transition-colors"
+                    >
+                      View Applications
+                    </button>
+                    <Link
+                      to="/requirements"
+                      className="px-3 py-1.5 rounded-lg border border-brand-border text-[12px] font-semibold text-brand-navy hover:border-brand-primary hover:text-brand-primary transition-colors"
+                    >
+                      Find Requirements
+                    </Link>
+                    <button
+                      onClick={() => setActiveTab('messages')}
+                      className="px-3 py-1.5 rounded-lg border border-brand-border text-[12px] font-semibold text-brand-navy hover:border-brand-primary hover:text-brand-primary transition-colors"
+                    >
+                      Messages
+                    </button>
+                  </>
+                }
+              />
 
               {/* Subscription status - values come from GET /api/subscriptions/me */}
               <SubscriptionStatusCard subscription={subscription} loading={subscriptionLoading} />
@@ -551,117 +594,18 @@ export default function FreelancerDashboard() {
           )}
 
           {activeTab === 'settings' && (
-            <div className="animate-fade-in space-y-6">
-              <div className="mb-6">
-                <h2 className="text-2xl font-serif font-bold text-brand-navy">Profile Settings</h2>
-                <p className="text-brand-textSec text-sm mt-1">Update your professional details and location.</p>
+            <div className="animate-fade-in space-y-5">
+              <div>
+                <h2 className="text-xl font-semibold text-brand-navy">Profile Settings</h2>
+                <p className="text-[13px] text-brand-textSec mt-0.5">
+                  Update your professional details, base location and travel schedule.
+                </p>
               </div>
-              
-              <div className="bg-brand-surface p-6 sm:p-8 rounded-xl border border-brand-border shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider mb-2">Full Name</label>
-                    <input 
-                      type="text" 
-                      value={profileData.name}
-                      onChange={(e) => setProfileData({...profileData, name: e.target.value})}
-                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider mb-2">Email Address</label>
-                    <input 
-                      type="email" 
-                      value={profileData.email}
-                      disabled
-                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-textSec cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider mb-2">Phone Number</label>
-                    <input 
-                      type="tel" 
-                      value={profileData.phone}
-                      onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider mb-2">Profession</label>
-                    <input 
-                      type="text" 
-                      value={profileData.profession}
-                      onChange={(e) => setProfileData({...profileData, profession: e.target.value})}
-                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 transition-colors"
-                      placeholder="e.g. Photographer, Makeup Artist"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider mb-2">City</label>
-                    <input 
-                      type="text" 
-                      value={profileData.city}
-                      onChange={(e) => setProfileData({...profileData, city: e.target.value})}
-                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider mb-2">State</label>
-                    <select 
-                      value={profileData.state}
-                      onChange={(e) => setProfileData({...profileData, state: e.target.value})}
-                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25 transition-colors custom-scrollbar"
-                    >
-                      <option value="">Select State</option>
-                      <option value="Andhra Pradesh">Andhra Pradesh</option>
-                      <option value="Arunachal Pradesh">Arunachal Pradesh</option>
-                      <option value="Assam">Assam</option>
-                      <option value="Bihar">Bihar</option>
-                      <option value="Chandigarh">Chandigarh</option>
-                      <option value="Chhattisgarh">Chhattisgarh</option>
-                      <option value="Delhi">Delhi</option>
-                      <option value="Goa">Goa</option>
-                      <option value="Gujarat">Gujarat</option>
-                      <option value="Haryana">Haryana</option>
-                      <option value="Himachal Pradesh">Himachal Pradesh</option>
-                      <option value="Jammu and Kashmir">Jammu and Kashmir</option>
-                      <option value="Jharkhand">Jharkhand</option>
-                      <option value="Karnataka">Karnataka</option>
-                      <option value="Kerala">Kerala</option>
-                      <option value="Ladakh">Ladakh</option>
-                      <option value="Lakshadweep">Lakshadweep</option>
-                      <option value="Madhya Pradesh">Madhya Pradesh</option>
-                      <option value="Maharashtra">Maharashtra</option>
-                      <option value="Manipur">Manipur</option>
-                      <option value="Meghalaya">Meghalaya</option>
-                      <option value="Mizoram">Mizoram</option>
-                      <option value="Nagaland">Nagaland</option>
-                      <option value="Odisha">Odisha</option>
-                      <option value="Puducherry">Puducherry</option>
-                      <option value="Punjab">Punjab</option>
-                      <option value="Rajasthan">Rajasthan</option>
-                      <option value="Sikkim">Sikkim</option>
-                      <option value="Tamil Nadu">Tamil Nadu</option>
-                      <option value="Telangana">Telangana</option>
-                      <option value="Tripura">Tripura</option>
-                      <option value="Uttar Pradesh">Uttar Pradesh</option>
-                      <option value="Uttarakhand">Uttarakhand</option>
-                      <option value="West Bengal">West Bengal</option>
-                      <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
-                      <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end pt-8 mt-4 border-t border-brand-border">
-                  <button 
-                    onClick={handleSaveProfile}
-                    disabled={isSaving}
-                    className="px-6 py-2.5 bg-brand-primary text-white text-sm font-medium rounded-lg hover:bg-brand-primaryLight transition-all shadow-sm disabled:opacity-50"
-                  >
-                    {isSaving ? 'Saving...' : 'Save Profile Changes'}
-                  </button>
-                </div>
+
+              <ProfileForm role="freelancer" />
+
+              <div className="pt-2 border-t border-brand-border">
+                <TravelAvailability baseLocation={{ city: myProfile?.city, state: myProfile?.state }} />
               </div>
             </div>
           )}

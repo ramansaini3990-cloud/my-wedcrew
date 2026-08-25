@@ -145,6 +145,14 @@ const RequirementCard = ({ req }) => {
               </div>
             </div>
             
+            {/* Detail page - the full brief lives there, not on the card */}
+            <Link
+              to={`/requirements/${req.id || req._id}`}
+              className="w-full mb-2 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-brand-border text-[13px] font-semibold text-brand-navy hover:border-brand-primary hover:text-brand-primary hover:bg-brand-primary/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            >
+              View Requirement
+            </Link>
+
             {user && user.role === 'freelancer' && (
               <>
                 {!applicationStatus ? (

@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import Conversation from '../models/Conversation.js';
 import { emitNotification } from '../socket.js';
+import { logFromRequest } from '../services/activityService.js';
 
 /** The fixed opening message every booking request carries. */
 const FIXED_BOOKING_MESSAGE =
@@ -67,6 +68,15 @@ export const createBookingRequest = async (req, res) => {
     });
     await notification.save();
     emitNotification(freelancer_id, notification);
+
+    await logFromRequest(req, {
+      eventType: 'booking.created',
+      category: 'bookings',
+      title: 'Booking request created',
+      description: `${company ? company.name : 'A company'} → ${freelancer.name}`,
+      target: { type: 'booking_request', id: bookingRequest._id, label: freelancer.name },
+      metadata: { status: 'pending', city: freelancer.city || undefined, requirement_id: requirement_id || undefined }
+    });
 
     res.status(201).json({
       message: 'Booking request sent successfully',
@@ -163,6 +173,18 @@ export const updateBookingRequestStatus = async (req, res) => {
           booking_id: bookingRequest._id
         });
         await conversation.save();
+
+        // Accepting a booking is the other place a conversation is born.
+        // Logged only on actual creation, so the event is never duplicated
+        // with the one raised by POST /api/chat/conversations.
+        await logFromRequest(req, {
+          eventType: 'conversation.created',
+          category: 'messages',
+          title: 'New conversation created',
+          description: 'Opened by an accepted booking request',
+          target: { type: 'conversation', id: conversation._id },
+          metadata: { conversation_id: String(conversation._id), booking_id: String(bookingRequest._id) }
+        });
       }
 
       const notification = new Notification({
@@ -189,6 +211,16 @@ export const updateBookingRequestStatus = async (req, res) => {
       await notification.save();
       emitNotification(bookingRequest.company_id, notification);
     }
+
+    await logFromRequest(req, {
+      eventType: status === 'accepted' ? 'booking.accepted' : 'booking.rejected',
+      category: 'bookings',
+      severity: status === 'accepted' ? 'success' : 'warning',
+      title: status === 'accepted' ? 'Booking accepted' : 'Booking rejected',
+      description: `${freelancerName} ${status} a booking request`,
+      target: { type: 'booking_request', id: bookingRequest._id, label: freelancerName },
+      metadata: { status }
+    });
 
     res.json({ message: 'Booking request ' + status + ' successfully' });
   } catch (error) {

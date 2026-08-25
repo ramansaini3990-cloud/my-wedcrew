@@ -12,6 +12,8 @@ import CompanyDashboard from './pages/CompanyDashboard';
 import NewRequirement from './pages/company/NewRequirement';
 import Requirements from './pages/Requirements';
 import Professionals from './pages/Professionals';
+import PublicProfile from './pages/PublicProfile';
+import RequirementDetail from './pages/RequirementDetail';
 import Messages from './pages/Messages';
 
 // Admin imports
@@ -23,6 +25,8 @@ import Companies from './pages/admin/Companies';
 import AdminRequirements from './pages/admin/Requirements';
 import Subscriptions from './pages/admin/Subscriptions';
 import AdminComingSoon from './pages/admin/ComingSoon';
+import AdminMasterData from './pages/admin/MasterData';
+import AdminActivityLog from './pages/admin/ActivityLog';
 
 import ScrollToTop from './components/ScrollToTop';
 
@@ -47,6 +51,8 @@ function App() {
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
               <Route path="requirements" element={<Requirements />} />
+              <Route path="requirements/:id" element={<RequirementDetail />} />
+              <Route path="professionals/:id" element={<PublicProfile />} />
               <Route path="freelancers" element={<Professionals />} />
               <Route 
                 path="messages" 
@@ -99,6 +105,8 @@ function App() {
               <Route path="companies" element={<Companies />} />
               <Route path="requirements" element={<AdminRequirements />} />
               <Route path="subscriptions" element={<Subscriptions />} />
+              <Route path="master-data" element={<AdminMasterData />} />
+              <Route path="activity-logs" element={<AdminActivityLog />} />
               <Route path="*" element={<AdminComingSoon />} />
             </Route>
           </Routes>

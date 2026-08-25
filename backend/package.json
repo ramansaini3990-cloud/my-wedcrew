@@ -11,7 +11,13 @@
     "seed:plans": "node src/scripts/seedPlans.js",
     "migrate:subscriptions": "node src/scripts/normalizeSubscriptions.js",
     "test:flow": "node src/scripts/e2eFlowTest.js",
-    "test:chat-unread": "node src/scripts/chatUnreadTest.js"
+    "test:chat-unread": "node src/scripts/chatUnreadTest.js",
+    "seed:master": "node src/scripts/seedMasterData.js",
+    "migrate:master": "node src/scripts/migrateProfileMasterData.js",
+    "test:master": "node src/scripts/masterDataTest.js",
+    "test:public": "node src/scripts/publicProfileTest.js",
+    "cleanup:activity": "node src/scripts/cleanupActivityLogs.js",
+    "test:activity": "node src/scripts/activityLogTest.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
