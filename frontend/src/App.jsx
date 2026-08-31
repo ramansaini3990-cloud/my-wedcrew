@@ -29,6 +29,7 @@ import AdminMasterData from './pages/admin/MasterData';
 import AdminActivityLog from './pages/admin/ActivityLog';
 
 import ScrollToTop from './components/ScrollToTop';
+import DocumentTitle from './components/DocumentTitle';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
       <SocketProvider>
         <Router>
           <ScrollToTop />
+          <DocumentTitle />
           <Routes>
             {/* Main App Layout */}
             <Route path="/" element={

@@ -7,11 +7,31 @@
  *
  * MEDIA
  * -----
- * The project ships no video files (`public/videos/` does not exist), so every
- * slide has `video: null` and renders its poster image instead. Drop files into
- * `public/videos/` and set the `video` path here to enable motion - no
- * component changes required.
+ * The project ships no video files yet, so every slide has `video: null` and
+ * renders its poster image instead. Drop .mp4 files into `public/videos/` and
+ * set the `video` path here to enable motion - no component changes required.
+ * See `public/videos/README.md` for encoding guidance.
  */
+
+/**
+ * Cinematic hero settings — change these here, not in the component.
+ *
+ *   rotationMs      how long each slide holds before advancing
+ *   fadeMs          crossfade duration between slides
+ *   overlayFrom/To  gradient strength over the media (higher = darker)
+ *   preloadNext     warm the next slide's video while the current one plays
+ *   showMuteControl offer an unmute button once a video is actually playing
+ *   showProgress    thin progress bar on the active slide indicator
+ */
+export const HERO_MEDIA = {
+  rotationMs: 7000,
+  fadeMs: 900,
+  overlaySide: 'from-brand-navy/90 via-brand-navy/65 to-brand-navy/25',
+  overlayBottom: 'from-brand-navy/85 via-transparent to-brand-navy/40',
+  preloadNext: true,
+  showMuteControl: true,
+  showProgress: true
+};
 
 /** Hero slides. `video` may be null; the poster is always shown as a fallback. */
 export const HERO_SLIDES = [

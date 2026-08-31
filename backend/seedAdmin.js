@@ -29,11 +29,11 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import connectDB from './src/config/database.js';
 import User from './src/models/User.js';
+import { validatePassword, PASSWORD_POLICY_TEXT } from './src/services/passwordPolicy.js';
 
 dotenv.config();
 
 const RESET_PASSWORD = process.argv.includes('--reset-password');
-const MIN_PASSWORD_LENGTH = 8;
 
 /** Escapes a string so it can be used inside a RegExp literally. */
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -98,8 +98,10 @@ const readConfig = () => {
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.push('ADMIN_EMAIL is not a valid email address.');
   }
-  if (password && password.length < MIN_PASSWORD_LENGTH) {
-    errors.push(`ADMIN_PASSWORD must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+  if (password) {
+    // Same policy the registration API enforces.
+    const policy = validatePassword(password);
+    if (!policy.ok) errors.push(PASSWORD_POLICY_TEXT);
   }
 
   // The User model stores a single `name`; first/last are composed into it so

@@ -49,7 +49,7 @@ app.use('/api/admin/activity-logs', activityLogRoutes); // admin-only activity s
 
 // Base route
 app.get('/', (req, res) => {
-  res.send('WedCrew API is running');
+  res.send('mywedcrew.com API is running');
 });
 
 // Health check route

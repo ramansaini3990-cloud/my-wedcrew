@@ -17,7 +17,8 @@
     "test:master": "node src/scripts/masterDataTest.js",
     "test:public": "node src/scripts/publicProfileTest.js",
     "cleanup:activity": "node src/scripts/cleanupActivityLogs.js",
-    "test:activity": "node src/scripts/activityLogTest.js"
+    "test:activity": "node src/scripts/activityLogTest.js",
+    "test:privacy": "node src/scripts/privacyPasswordTest.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

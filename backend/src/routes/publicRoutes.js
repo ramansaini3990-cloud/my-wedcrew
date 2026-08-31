@@ -4,9 +4,12 @@ import Availability from '../models/Availability.js';
 import AvailabilityBlock, { BOOKABLE_STATUSES } from '../models/AvailabilityBlock.js';
 import { escapeRegex } from '../services/masterDataService.js';
 import { startOfDay } from '../services/availabilityService.js';
+import { optionalAuth } from '../middleware/authMiddleware.js';
 import {
   PUBLIC_PROFESSIONAL_FIELDS,
   toPublicProfessional,
+  toLockedProfessional,
+  canViewProfessionalDetails,
   deriveCurrentAvailability,
   loadPublicBlocks
 } from '../services/publicProfileService.js';
@@ -20,7 +23,7 @@ const router = express.Router();
  * email, phone, manual address and coordinates are never included, regardless
  * of what the User document holds.
  */
-router.get('/freelancers/:id', async (req, res) => {
+router.get('/freelancers/:id', optionalAuth, async (req, res) => {
   try {
     const user = await User.findOne({ _id: req.params.id, role: 'freelancer' })
       .select(PUBLIC_PROFESSIONAL_FIELDS)
@@ -35,6 +38,13 @@ router.get('/freelancers/:id', async (req, res) => {
     }
 
     const blocks = await loadPublicBlocks(user._id);
+
+    // Subscription gate. Without an active plan the identity fields are never
+    // serialised, so they cannot be recovered from the response.
+    const unlocked = await canViewProfessionalDetails(req.user, user._id);
+    if (!unlocked) {
+      return res.json({ success: true, data: toLockedProfessional(user, blocks) });
+    }
 
     // Published open days from the existing day-calendar.
     const today = new Date();
@@ -82,7 +92,7 @@ router.get('/freelancers/:id', async (req, res) => {
  * Privacy: exact coordinates and manual addresses are never returned here -
  * only the approximate "City, State".
  */
-router.get('/freelancers', async (req, res) => {
+router.get('/freelancers', optionalAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
@@ -228,10 +238,27 @@ router.get('/freelancers', async (req, res) => {
 
     const travelSet = new Set(travelUserIds);
 
+    // One subscription check for the whole page, not per row.
+    const unlocked = await canViewProfessionalDetails(req.user);
+
     const formattedUsers = users.map((u) => {
       const fId = u.id || u._id.toString();
+
+      // Locked callers get the masked shape - identity fields are dropped here,
+      // on the server, rather than hidden by the client.
+      if (!unlocked) {
+        return {
+          ...toLockedProfessional(u, allBlocksByUser[fId] || []),
+          _id: u._id,
+          available_dates: availabilityMap[fId] ? availabilityMap[fId].join(',') : null,
+          upcoming_availability: blocksByUser[fId] || [],
+          match_type: cityId ? (String(u.city_id?._id || u.city_id) === String(cityId) ? 'base' : travelSet.has(fId) ? 'travel' : 'base') : 'base'
+        };
+      }
+
       return {
         ...u,
+        locked: false,
         profession: u.profession_id?.name || u.profession || null,
         state: u.state_id?.name || u.state || null,
         city: u.city_id?.name || u.city || null,

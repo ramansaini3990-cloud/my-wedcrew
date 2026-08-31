@@ -1,4 +1,4 @@
-# WedCrew - Manual Subscription & Chat Guide
+# mywedcrew.com - Manual Subscription & Chat Guide
 
 This guide explains how the newly integrated Subscription and Chat system operates using the manual Admin-controlled workflow.
 

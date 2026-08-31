@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { logActivity } from '../services/activityService.js';
+import { validatePassword, passwordPolicyError } from '../services/passwordPolicy.js';
 
 // Generate JWT Token
 const generateToken = (user) => {
@@ -22,6 +23,14 @@ export const registerUser = async (req, res) => {
     // Validate required fields
     if (!role || !name || !phone || !email || !password) {
       return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+
+    // Strong-password policy. Enforced here, on the server, so removing the
+    // client-side checks cannot create a weak account. Applies to NEW passwords
+    // only - existing accounts are untouched and can still sign in.
+    const policy = validatePassword(password);
+    if (!policy.ok) {
+      return res.status(400).json(passwordPolicyError(policy));
     }
 
     // Check if user exists (email or phone)

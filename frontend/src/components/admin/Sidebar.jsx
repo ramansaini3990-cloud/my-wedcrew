@@ -68,8 +68,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-14 px-4 border-b border-brand-border shrink-0">
-          <span className="font-serif text-lg font-bold tracking-wide text-brand-navy">
-            Wed<span className="text-brand-primary">Crew</span>
+          <span className="font-serif text-base font-bold tracking-wide text-brand-navy whitespace-nowrap">
+            mywed<span className="text-brand-primary">crew</span><span className="text-brand-navy/55">.com</span>
           </span>
           <button
             className="lg:hidden text-brand-textSec hover:text-brand-primary transition-colors"
@@ -122,7 +122,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
         {/* Footer info */}
         <div className="px-4 py-2.5 border-t border-brand-border text-[10px] text-brand-muted text-center font-medium tracking-wider uppercase shrink-0">
-          WedCrew Studio v1.0
+          mywedcrew.com v1.0
         </div>
       </aside>
     </>

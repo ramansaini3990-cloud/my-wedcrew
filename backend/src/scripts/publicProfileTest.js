@@ -148,10 +148,32 @@ const run = async () => {
     check('Phone absent from raw detail JSON', !detail.raw.includes(freelancer.phone));
     check('Password hash absent', !detail.raw.includes('$2a$') && !detail.raw.includes('$2b$'));
 
-    check('Public fields ARE present', p.name && p.profession === 'Drone Pilot' && p.city === 'Udaipur');
-    check('Public bio exposed', p.bio === 'Certified aerial operator.');
+    // Identity is now gated behind an active subscription, so an anonymous
+    // caller sees the locked shape: discovery data yes, identity no.
+    check('Anonymous caller receives the LOCKED shape', p.locked === true);
+    check('Locked: name withheld', p.name === null);
+    check('Locked: bio withheld', !p.bio);
+    check('Locked: equipment withheld', !(p.equipment || []).length);
+    check('Locked: discovery fields still present',
+      p.profession === 'Drone Pilot' && p.city === 'Udaipur');
     check('Public experience exposed', p.experience_years === 6);
-    check('Public equipment exposed', Array.isArray(p.equipment) && p.equipment[0] === 'Mavic 3');
+
+    // A subscribed company gets the full professional view.
+    {
+      const plansRes = (await request('GET', '/api/admin/plans', { token: admin.token })).data || [];
+      const premium = plansRes.find((pl) => pl.name === 'PREMIUM');
+      await request('POST', '/api/admin/subscriptions', {
+        token: admin.token,
+        body: { user_id: company.id, planId: premium.id, start_date: iso(0), end_date: iso(30) }
+      });
+      const unlockedRes = await request('GET', `/api/public/freelancers/${freelancer.id}`, { token: company.token });
+      const u = unlockedRes.data?.data || {};
+      check('Subscribed caller sees the real name', Boolean(u.name) && u.locked !== true);
+      check('Subscribed caller sees the bio', u.bio === 'Certified aerial operator.');
+      check('Subscribed caller sees the equipment', (u.equipment || [])[0] === 'Mavic 3');
+      check('Subscribed response STILL hides email/phone',
+        !unlockedRes.raw.includes(freelancer.email) && !unlockedRes.raw.includes(freelancer.phone));
+    }
 
     /* -------------------------------------------------------------- */
     section('Real availability, not base city');

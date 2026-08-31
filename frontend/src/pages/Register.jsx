@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import PasswordInput from '../components/ui/PasswordInput';
 
 export default function Register() {
   const [role, setRole] = useState('freelancer');
@@ -54,7 +55,7 @@ export default function Register() {
           <div className="w-16 h-16 bg-white rounded-2xl border border-brand-primary/30 mx-auto flex items-center justify-center mb-6 shadow-sm">
             <span className="font-serif text-2xl font-bold text-brand-primary">W</span>
           </div>
-          <h2 className="mt-2 text-center text-4xl font-serif font-bold text-brand-navy tracking-wide">Join WedCrew</h2>
+          <h2 className="mt-2 text-center text-4xl font-serif font-bold text-brand-navy tracking-wide">Join mywedcrew.com</h2>
           <p className="mt-4 text-center text-sm text-brand-textSec">
             Already have an account? <Link to="/login" className="font-medium text-brand-primary hover:text-brand-primaryDark transition-colors underline-offset-4 hover:underline">Sign in</Link>
           </p>
@@ -94,7 +95,16 @@ export default function Register() {
               <input id="phone" name="phone" type="text" required value={phone} onChange={(e) => setPhone(e.target.value)} className="appearance-none rounded-xl relative block w-full px-4 py-3 bg-white border border-brand-border placeholder-brand-muted text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary sm:text-sm transition-colors" placeholder="Phone Number" />
             </div>
             <div>
-              <input id="password" name="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="appearance-none rounded-xl relative block w-full px-4 py-3 bg-white border border-brand-border placeholder-brand-muted text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary sm:text-sm transition-colors" placeholder="Create Password" />
+              <PasswordInput
+                id="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                showRequirements
+                className="appearance-none rounded-xl relative block w-full px-4 py-3 bg-white border border-brand-border placeholder-brand-muted text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary sm:text-sm transition-colors"
+                placeholder="Create Password"
+              />
             </div>
           </div>
           <div className="pt-2">

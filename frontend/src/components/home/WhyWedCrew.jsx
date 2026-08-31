@@ -11,7 +11,7 @@ export default function WhyWedCrew() {
           <div>
             <SectionHeading
               align="left"
-              eyebrow="Why WedCrew"
+              eyebrow="Why mywedcrew.com"
               title="The Gold Standard in"
               accent="Wedding Production"
               description="An exclusive ecosystem built for production houses managing high-value client events."

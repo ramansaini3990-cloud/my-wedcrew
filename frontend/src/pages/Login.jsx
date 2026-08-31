@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import PasswordInput from '../components/ui/PasswordInput';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -74,15 +75,14 @@ export default function Login() {
             </div>
             <div>
               <label htmlFor="password" className="text-xs font-medium text-brand-textSec uppercase tracking-wider mb-1 block ml-1">Password</label>
-              <input 
-                id="password" 
-                name="password" 
-                type="password" 
-                required 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                className="appearance-none rounded-xl relative block w-full px-4 py-3 bg-white border border-brand-border placeholder-brand-muted text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary sm:text-sm transition-colors" 
-                placeholder="••••••••" 
+              <PasswordInput
+                id="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                className="appearance-none rounded-xl relative block w-full px-4 py-3 bg-white border border-brand-border placeholder-brand-muted text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary sm:text-sm transition-colors"
+                placeholder="••••••••"
               />
             </div>
           </div>

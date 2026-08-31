@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   MapPin, Briefcase, CalendarCheck, ArrowLeft, AlertCircle,
-  Loader2, Camera, CalendarRange
+  Loader2, Camera, CalendarRange, Lock
 } from 'lucide-react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
@@ -128,6 +128,9 @@ export default function PublicProfile() {
   const openDays = profile.available_dates || [];
   const isCompany = user?.role === 'company';
 
+  // Identity fields are withheld server-side without an active subscription.
+  const locked = profile.locked === true;
+
   return (
     <div className="bg-brand-bg min-h-screen pt-24 pb-16">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -142,16 +145,25 @@ export default function PublicProfile() {
             border and sits inline with the name, so nothing overlaps. */}
         <header className="bg-brand-surface rounded-xl border border-brand-border p-5 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
-            <Avatar
-              user={profile}
-              size="xl"
-              className="!h-[4.5rem] !w-[4.5rem] !text-xl shadow-sm"
-              fallback="P"
-            />
+            {locked ? (
+              <span
+                className="h-[4.5rem] w-[4.5rem] shrink-0 rounded-full bg-brand-bg border border-brand-border flex items-center justify-center text-brand-textSec"
+                aria-hidden="true"
+              >
+                <Lock size={24} />
+              </span>
+            ) : (
+              <Avatar
+                user={profile}
+                size="xl"
+                className="!h-[4.5rem] !w-[4.5rem] !text-xl shadow-sm"
+                fallback="P"
+              />
+            )}
 
             <div className="min-w-0 flex-1">
               <h1 className="font-serif text-xl sm:text-2xl font-bold text-brand-navy leading-tight break-words">
-                {profile.name}
+                {locked ? 'Verified Professional' : profile.name}
               </h1>
 
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
@@ -177,6 +189,24 @@ export default function PublicProfile() {
         <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Main column */}
           <div className="lg:col-span-2 space-y-4">
+            {locked && (
+              <section className="bg-brand-surface rounded-xl border border-brand-primary/25 p-8 text-center">
+                <span className="mx-auto mb-3 h-11 w-11 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+                  <Lock size={20} aria-hidden="true" />
+                </span>
+                <h2 className="font-serif text-lg font-bold text-brand-navy">Subscribe to Unlock</h2>
+                <p className="mt-1.5 text-[13px] text-brand-textSec max-w-sm mx-auto leading-relaxed">
+                  Get an active subscription to view full professional details and connect with professionals.
+                </p>
+                <Link
+                  to="/#pricing"
+                  className="mt-5 inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-brand-primary text-white text-[13px] font-semibold hover:bg-brand-primaryDark transition-colors"
+                >
+                  View Subscription Plans
+                </Link>
+              </section>
+            )}
+
             {profile.bio ? (
               <Section title="About">
                 <p className="text-[14px] leading-relaxed text-brand-navy whitespace-pre-line">{profile.bio}</p>
@@ -265,10 +295,22 @@ export default function PublicProfile() {
           <aside className="space-y-4">
             <div className="bg-brand-surface rounded-xl border border-brand-border p-5">
               <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-textSec mb-3">
-                Work with {profile.name?.split(' ')[0] || 'this professional'}
+                Work with {locked ? 'this professional' : profile.name?.split(' ')[0] || 'this professional'}
               </h2>
 
-              {isCompany ? (
+              {locked ? (
+                <>
+                  <Link
+                    to="/#pricing"
+                    className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-brand-primary text-white text-[13px] font-semibold hover:bg-brand-primaryDark transition-colors"
+                  >
+                    View Subscription Plans
+                  </Link>
+                  <p className="mt-2.5 text-[11px] text-brand-textSec">
+                    An active subscription is required to view details and send booking requests.
+                  </p>
+                </>
+              ) : isCompany ? (
                 <>
                   <button
                     onClick={requestBooking}

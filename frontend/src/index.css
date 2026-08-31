@@ -125,6 +125,12 @@ html {
   background: rgba(222, 96, 30, 0.55);
 }
 
+/* Hero slide progress indicator (see HERO_MEDIA.showProgress) */
+@keyframes heroProgress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
 /* Base animations */
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out forwards;
@@ -133,4 +139,12 @@ html {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Password fields render their own accessible show/hide control
+   (components/ui/PasswordInput.jsx). Hide the browser's built-in reveal button
+   so Edge/Chrome on Windows do not show a second, unstyled eye beside it. */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
 }

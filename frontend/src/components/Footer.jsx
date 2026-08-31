@@ -11,8 +11,8 @@ export default function Footer() {
           <div className="space-y-6">
             <Link to="/" className="flex items-center gap-2 group">
               <Crown className="text-brand-primary" size={32} />
-              <span className="font-serif text-2xl font-bold tracking-wide text-white">
-                Wed<span className="text-brand-primary">Crew</span>
+              <span className="font-serif text-xl font-bold tracking-wide text-white whitespace-nowrap">
+                mywed<span className="text-brand-primary">crew</span><span className="text-white/55">.com</span>
               </span>
             </Link>
             <p className="text-white/60 text-[13px] leading-relaxed">
@@ -76,7 +76,7 @@ export default function Footer() {
 
         <div className="pt-7 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-white/50 text-[12px]">
-            &copy; {new Date().getFullYear()} WedCrew Production Network. All rights reserved.
+            &copy; {new Date().getFullYear()} mywedcrew.com. All rights reserved.
           </p>
           <p className="text-brand-textSec text-sm flex items-center gap-1">
             Designed for <Crown size={14} className="text-brand-primary mx-1" /> Premium Productions

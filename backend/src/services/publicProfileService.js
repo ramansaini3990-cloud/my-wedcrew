@@ -1,4 +1,5 @@
 import AvailabilityBlock, { BOOKABLE_STATUSES } from '../models/AvailabilityBlock.js';
+import { hasActiveSubscription } from './subscriptionService.js';
 
 /**
  * Public-safe serialisation for professional profiles.
@@ -102,8 +103,64 @@ export const loadPublicBlocks = async (userId) =>
     .sort({ start_date: 1 })
     .lean();
 
+/**
+ * Decides whether the caller may see identifying professional details.
+ *
+ * Mirrors the masking rule the requirements API already uses: an active
+ * subscription unlocks the full view. Admins and the professional themselves
+ * are always unlocked.
+ *
+ * @param {object|undefined} user  req.user from optionalAuth (may be absent)
+ * @param {string} [professionalId] when checking a single profile
+ */
+export const canViewProfessionalDetails = async (user, professionalId = null) => {
+  if (!user) return false;                       // anonymous visitor
+  if (user.role === 'admin') return true;        // platform operator
+  if (professionalId && String(user.id || user._id) === String(professionalId)) return true; // own profile
+  return hasActiveSubscription(user.id || user._id);
+};
+
+/**
+ * Masked DTO for callers without an active subscription.
+ *
+ * The professional's IDENTITY is removed server-side - name, photo, bio and
+ * equipment are never serialised, so they cannot be recovered from the network
+ * response, DevTools or by disabling frontend checks. What remains is enough to
+ * show that a matching professional exists (craft, area, availability).
+ */
+export const toLockedProfessional = (user, blocks = []) => {
+  if (!user) return null;
+
+  return {
+    id: String(user._id || user.id),
+    locked: true,
+
+    // Identity withheld.
+    name: null,
+    profile_picture: null,
+    bio: null,
+    equipment: [],
+
+    // Non-identifying discovery data stays visible.
+    profession: user.profession_id?.name || user.profession || null,
+    profession_id: user.profession_id?._id ? String(user.profession_id._id) : null,
+    city: user.city_id?.name || user.city || null,
+    state: user.state_id?.name || user.state || null,
+    city_id: user.city_id?._id ? String(user.city_id._id) : null,
+    state_id: user.state_id?._id ? String(user.state_id._id) : null,
+    experience_years: typeof user.experience_years === 'number' ? user.experience_years : null,
+
+    current_availability: deriveCurrentAvailability(blocks),
+    upcoming_availability: serialiseUpcoming(blocks),
+
+    lock_reason: 'SUBSCRIPTION_REQUIRED'
+  };
+};
+
 export default {
   PUBLIC_PROFESSIONAL_FIELDS,
+  canViewProfessionalDetails,
+  toLockedProfessional,
   toPublicProfessional,
   deriveCurrentAvailability,
   serialiseUpcoming,

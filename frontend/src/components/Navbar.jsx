@@ -92,8 +92,8 @@ export default function Navbar() {
               strokeWidth={1.6}
               aria-hidden="true"
             />
-            <span className="font-serif text-xl sm:text-2xl font-bold tracking-wide text-brand-navy">
-              Wed<span className="text-brand-primary">Crew</span>
+            <span className="font-serif text-lg sm:text-xl font-bold tracking-wide text-brand-navy whitespace-nowrap">
+              mywed<span className="text-brand-primary">crew</span><span className="text-brand-navy/55">.com</span>
             </span>
           </Link>
 

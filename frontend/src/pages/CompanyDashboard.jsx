@@ -317,7 +317,7 @@ export default function CompanyDashboard() {
                 <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div>
                     <h3 className="text-2xl font-serif text-brand-navy mb-2 flex items-center gap-2">
-                      <Crown className="text-brand-primary" size={24} /> WedCrew Studio Enterprise
+                      <Crown className="text-brand-primary" size={24} /> mywedcrew.com Studio Enterprise
                     </h3>
                     <p className="text-brand-textSec text-sm max-w-md leading-relaxed">
                       Need to hire 10+ crew members for a mega production? Get dedicated account management and bulk hiring discounts.

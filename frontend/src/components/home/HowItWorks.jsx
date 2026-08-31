@@ -17,7 +17,7 @@ export default function HowItWorks() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="The Process"
-          title="How WedCrew"
+          title="How mywedcrew.com"
           accent="Works"
           description="From brief to booked crew in four steps."
         />

@@ -1,4 +1,4 @@
-# WedCrew — Setup, Testing & API Guide
+# mywedcrew.com — Setup, Testing & API Guide
 
 A marketplace connecting wedding **production companies** with **freelance crew**
 (cinematographers, photographers, drone pilots, editors).

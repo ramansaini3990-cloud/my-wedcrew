@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, CalendarCheck, Briefcase, ArrowRight, Plane } from 'lucide-react';
+import { MapPin, CalendarCheck, Briefcase, ArrowRight, Plane, Lock } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import AvailabilityBadge from './AvailabilityBadge';
 
@@ -21,6 +21,11 @@ export default function ProfessionalCard({ professional, actions = null }) {
   const p = professional || {};
   const id = p.id || p._id;
 
+  // The backend withholds identity fields without an active subscription, so
+  // `name` is genuinely absent here - this is a render of what we received,
+  // not a client-side blur over data we were sent.
+  const locked = p.locked === true;
+
   const location = [p.city, p.state].filter(Boolean).join(', ');
   const openDays = p.available_dates ? String(p.available_dates).split(',').filter(Boolean).length : 0;
 
@@ -35,10 +40,19 @@ export default function ProfessionalCard({ professional, actions = null }) {
     <article className="group flex flex-col rounded-xl border border-brand-border bg-white shadow-sm hover:shadow-lg hover:border-brand-primary/40 hover:-translate-y-1 transition-all duration-300">
       <div className="p-5 flex-1">
         <div className="flex items-start gap-3.5">
-          <Avatar user={p} size="lg" fallback="P" />
+          {locked ? (
+            <span
+              className="h-12 w-12 shrink-0 rounded-full bg-brand-bg border border-brand-border flex items-center justify-center text-brand-textSec"
+              aria-hidden="true"
+            >
+              <Lock size={17} />
+            </span>
+          ) : (
+            <Avatar user={p} size="lg" fallback="P" />
+          )}
           <div className="min-w-0 flex-1">
             <h3 className="font-serif text-[16px] font-bold text-brand-navy leading-snug truncate group-hover:text-brand-primary transition-colors">
-              {p.name || 'Professional'}
+              {locked ? 'Verified Professional' : p.name || 'Professional'}
             </h3>
             {p.profession && (
               <p className="mt-0.5 flex items-center gap-1.5 text-[12px] font-medium text-brand-primary truncate">
@@ -103,13 +117,32 @@ export default function ProfessionalCard({ professional, actions = null }) {
       </div>
 
       <div className="px-5 pb-5 pt-0 space-y-2">
-        <Link
-          to={`/professionals/${id}`}
-          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-brand-navy text-white text-[13px] font-semibold hover:bg-brand-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
-        >
-          View Profile <ArrowRight size={14} aria-hidden="true" />
-        </Link>
-        {actions}
+        {locked ? (
+          <>
+            <p className="rounded-lg bg-brand-primary/5 border border-brand-primary/20 px-3 py-2.5 text-[12px] text-brand-navy">
+              <span className="font-semibold">Subscribe to Unlock</span>
+              <span className="block mt-0.5 text-brand-textSec">
+                Get an active subscription to view full professional details and connect with professionals.
+              </span>
+            </p>
+            <Link
+              to="/#pricing"
+              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-brand-primary text-white text-[13px] font-semibold hover:bg-brand-primaryDark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+            >
+              View Subscription Plans <ArrowRight size={14} aria-hidden="true" />
+            </Link>
+          </>
+        ) : (
+          <>
+            <Link
+              to={`/professionals/${id}`}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-brand-navy text-white text-[13px] font-semibold hover:bg-brand-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+            >
+              View Profile <ArrowRight size={14} aria-hidden="true" />
+            </Link>
+            {actions}
+          </>
+        )}
       </div>
     </article>
   );
