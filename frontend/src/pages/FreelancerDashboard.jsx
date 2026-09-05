@@ -18,6 +18,7 @@ import TravelAvailability from '../components/profile/TravelAvailability';
 import PortfolioManager from '../components/gallery/PortfolioManager';
 import FreelancerEarnings from '../components/payments/FreelancerEarnings';
 import ChangePassword from '../components/settings/ChangePassword';
+import AvailabilityManager from '../components/availability/AvailabilityManager';
 
 /**
  * Tab identity lives in the URL as ?tab=<id>.
@@ -65,10 +66,6 @@ export default function FreelancerDashboard() {
   
   const [showModal, setShowModal] = useState(false);
   const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', city: '', profession: '', state: '', availableDates: [] });
-  const [newDate, setNewDate] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [bookingRequests, setBookingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -174,116 +171,6 @@ export default function FreelancerDashboard() {
     } catch (error) {
       console.error('Failed to update request status', error);
       alert('Failed to update request status');
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    try {
-      setIsSaving(true);
-      
-      let newDates = [...profileData.availableDates];
-      
-      if (startDate && endDate) {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        if (start <= end) {
-          const current = new Date(start);
-          while (current <= end) {
-            newDates.push(`${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`);
-            current.setDate(current.getDate() + 1);
-          }
-        }
-      }
-
-      if (newMonth) {
-        const [year, month] = newMonth.split('-');
-        const numDays = new Date(year, month, 0).getDate();
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        
-        for (let i = 1; i <= numDays; i++) {
-          const d = new Date(year, month - 1, i);
-          if (d >= today) {
-            newDates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
-          }
-        }
-      }
-
-      newDates = [...new Set(newDates)].sort();
-      const updatedProfile = { ...profileData, availableDates: newDates };
-
-      await api.post('/api/freelancer/profile', updatedProfile);
-      
-      setProfileData(updatedProfile);
-      setStartDate('');
-      setEndDate('');
-      setNewMonth('');
-      // Toast notification placeholder
-    } catch (error) {
-      console.error('Failed to save profile', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleAddDate = () => {
-    if (newDate && !profileData.availableDates.includes(newDate)) {
-      setProfileData(prev => ({ ...prev, availableDates: [...prev.availableDates, newDate] }));
-      setNewDate('');
-    }
-  };
-
-  const handleRemoveDate = (dateToRemove) => {
-    setProfileData(prev => ({
-      ...prev,
-      availableDates: prev.availableDates.filter(d => d !== dateToRemove)
-    }));
-  };
-
-  const handleAddDateRange = () => {
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      if (start <= end) {
-        const datesToAdd = [];
-        const current = new Date(start);
-        while (current <= end) {
-          datesToAdd.push(`${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`);
-          current.setDate(current.getDate() + 1);
-        }
-        
-        setProfileData(prev => {
-          const newAvailable = [...new Set([...prev.availableDates, ...datesToAdd])];
-          return { ...prev, availableDates: newAvailable.sort() };
-        });
-        setStartDate('');
-        setEndDate('');
-      }
-    }
-  };
-
-  const [newMonth, setNewMonth] = useState('');
-
-  const handleAddMonth = () => {
-    if (newMonth) {
-      const [year, month] = newMonth.split('-');
-      const numDays = new Date(year, month, 0).getDate();
-      const datesToAdd = [];
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      
-      for (let i = 1; i <= numDays; i++) {
-        const d = new Date(year, month - 1, i);
-        if (d >= today) {
-          datesToAdd.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
-        }
-      }
-      
-      setProfileData(prev => {
-        const newAvailable = [...new Set([...prev.availableDates, ...datesToAdd])];
-        return { ...prev, availableDates: newAvailable.sort() };
-      });
-      setNewMonth('');
     }
   };
 
@@ -512,133 +399,8 @@ export default function FreelancerDashboard() {
           )}
 
           {activeTab === 'calendar' && (
-            <div className="animate-fade-in space-y-6">
-              <div className="mb-6">
-                <h2 className="text-2xl font-serif font-bold text-brand-navy">Manage Availability</h2>
-                <p className="text-brand-textSec text-sm mt-1">Set your working days and let clients know when you're free.</p>
-              </div>
-              
-              <div className="bg-brand-surface p-6 sm:p-8 rounded-xl border border-brand-border shadow-sm space-y-8">
-                {/* Add Dates Section */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Date Range Option */}
-                  <div className="space-y-3">
-                    <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider">Add Date Range</label>
-                    <div className="space-y-3">
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <label className="flex-1 flex items-center gap-2 bg-brand-bg border border-brand-border rounded-lg px-3 focus-within:border-brand-primary transition-all">
-                          <Calendar className="text-brand-textSec shrink-0" size={16} />
-                          <input 
-                            type="date" 
-                            value={startDate}
-                            onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            min={new Date().toISOString().split('T')[0]}
-                            className="w-full bg-transparent py-2.5 text-sm text-brand-navy focus:outline-none cursor-pointer"
-                          />
-                        </label>
-                        <span className="text-brand-textSec text-sm font-medium flex items-center px-1">to</span>
-                        <label className="flex-1 flex items-center gap-2 bg-brand-bg border border-brand-border rounded-lg px-3 focus-within:border-brand-primary transition-all">
-                          <Calendar className="text-brand-textSec shrink-0" size={16} />
-                          <input 
-                            type="date" 
-                            value={endDate}
-                            onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            min={startDate || new Date().toISOString().split('T')[0]}
-                            className="w-full bg-transparent py-2.5 text-sm text-brand-navy focus:outline-none cursor-pointer"
-                          />
-                        </label>
-                      </div>
-                      <button 
-                        onClick={handleAddDateRange}
-                        disabled={!startDate || !endDate}
-                        className="w-full px-4 py-2.5 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                      >
-                        Add Dates
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Entire Month Option */}
-                  <div className="space-y-3">
-                    <label className="block text-xs font-bold text-brand-navy uppercase tracking-wider">Or Add Entire Month</label>
-                    <div className="space-y-3">
-                      <label className="w-full flex items-center gap-2 bg-brand-bg border border-brand-border rounded-lg px-3 focus-within:border-brand-primary transition-all">
-                        <Calendar className="text-brand-textSec shrink-0" size={16} />
-                        <input 
-                          type="month" 
-                          value={newMonth}
-                          onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                          onChange={(e) => setNewMonth(e.target.value)}
-                          min={new Date().toISOString().slice(0, 7)}
-                          className="w-full bg-transparent py-2.5 text-sm text-brand-navy focus:outline-none cursor-pointer"
-                        />
-                      </label>
-                      <button 
-                        onClick={handleAddMonth}
-                        disabled={!newMonth}
-                        className="w-full px-4 py-2.5 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                      >
-                        Add Month
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Selected Dates Display */}
-                <div className="pt-8 border-t border-brand-border">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-brand-navy uppercase tracking-wider">Upcoming Availability</h3>
-                    <div className="flex items-center gap-3">
-                      {profileData.availableDates.length > 0 && (
-                        <button 
-                          onClick={() => setProfileData({ ...profileData, availableDates: [] })}
-                          className="text-xs text-brand-danger hover:underline transition-all font-medium"
-                        >
-                          Clear All
-                        </button>
-                      )}
-                      <span className="text-xs font-bold px-2.5 py-1 bg-brand-primary/10 text-brand-primary rounded-md">
-                        {profileData.availableDates.length} Selected
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-brand-bg rounded-xl p-4 border border-brand-border min-h-[120px] max-h-[300px] overflow-y-auto custom-scrollbar">
-                    {profileData.availableDates.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-center opacity-60 py-6">
-                        <Calendar size={28} className="mb-2 text-brand-textSec" />
-                        <p className="text-sm">No dates added yet.</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {profileData.availableDates.map(d => (
-                          <div key={d} className="flex items-center gap-1.5 bg-white border border-brand-border hover:border-brand-primary/30 pl-3 pr-1 py-1.5 rounded-lg text-xs shadow-sm group transition-all">
-                            <span className="text-brand-navy font-medium">{new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                            <button 
-                              onClick={() => handleRemoveDate(d)} 
-                              className="w-5 h-5 flex items-center justify-center rounded-md text-brand-textSec hover:bg-red-50 hover:text-brand-danger transition-colors"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <button 
-                    onClick={handleSaveProfile}
-                    disabled={isSaving}
-                    className="px-6 py-2.5 bg-brand-primary text-white text-sm font-medium rounded-lg hover:bg-brand-primaryLight transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {isSaving ? 'Saving...' : 'Save Availability'}
-                  </button>
-                </div>
-              </div>
+            <div className="animate-fade-in">
+              <AvailabilityManager />
             </div>
           )}
 
