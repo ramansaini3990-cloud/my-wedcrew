@@ -183,12 +183,20 @@ const run = async () => {
       process.exit(1);
     }
 
-    // `phone` is not uniquely indexed, but registration rejects duplicates, so
-    // warn rather than silently creating a number that blocks a future signup.
+    // `phone` is now UNIQUE, so a collision is no longer a warning that can be
+    // shrugged off - User.create() below would throw a raw E11000. It is checked
+    // for here so the seeder stops with an explanation instead of a stack trace.
+    //
+    // This used to be a warning the seeder carried on past, which is how two
+    // admin accounts ended up sharing one number.
     const phoneOwner = await User.findOne({ phone });
     if (phoneOwner) {
-      console.warn(`Warning: mobile ${phone} is already used by another account.`);
-      console.warn('  Set ADMIN_MOBILE to a unique number to avoid registration conflicts.');
+      console.error(`\nAdmin seeder aborted: mobile ${phone} already belongs to another account.`);
+      console.error(`  That account: ${phoneOwner.email} (role "${phoneOwner.role}")`);
+      console.error('  Set ADMIN_MOBILE to a number no other account uses, then run this again.');
+      console.error('  Nothing was created or changed.\n');
+      await mongoose.connection.close();
+      process.exit(1);
     }
 
     // Same hashing as authController.registerUser.
@@ -214,6 +222,17 @@ const run = async () => {
     await mongoose.connection.close();
     process.exit(0);
   } catch (error) {
+    // A unique-index collision is a configuration problem, not a crash: name the
+    // field that clashed in plain words rather than printing a driver error.
+    if (error?.code === 11000) {
+      const field = Object.keys(error.keyPattern || error.keyValue || {})[0] || 'unique field';
+      console.error(`\nAdmin seeder aborted: another account already uses that ${field}.`);
+      console.error(`  Change ADMIN_${field === 'phone' ? 'MOBILE' : 'EMAIL'} and run this again.`);
+      console.error('  Nothing was created or changed.\n');
+      try { await mongoose.connection.close(); } catch { /* ignore */ }
+      process.exit(1);
+    }
+
     // Never echo credentials in error output.
     console.error(`\nAdmin seeder failed: ${error.message}\n`);
     try { await mongoose.connection.close(); } catch { /* ignore */ }

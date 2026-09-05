@@ -30,6 +30,7 @@ import AdminMasterData from './pages/admin/MasterData';
 import AdminActivityLog from './pages/admin/ActivityLog';
 import AdminFinance from './pages/admin/Finance';
 import AdminEmailLogs from './pages/admin/EmailLogs';
+import AdminSettings from './pages/admin/Settings';
 
 import ScrollToTop from './components/ScrollToTop';
 import DocumentTitle from './components/DocumentTitle';
@@ -37,8 +38,8 @@ import DocumentTitle from './components/DocumentTitle';
 function App() {
   return (
     <AuthProvider>
-      <SocketProvider>
-        <Router>
+      <Router>
+        <SocketProvider>
           <ScrollToTop />
           <DocumentTitle />
           <Routes>
@@ -115,11 +116,12 @@ function App() {
               <Route path="activity-logs" element={<AdminActivityLog />} />
               <Route path="payments" element={<AdminFinance />} />
               <Route path="email-logs" element={<AdminEmailLogs />} />
+              <Route path="settings" element={<AdminSettings />} />
               <Route path="*" element={<AdminComingSoon />} />
             </Route>
           </Routes>
-        </Router>
-      </SocketProvider>
+        </SocketProvider>
+      </Router>
     </AuthProvider>
   );
 }

@@ -17,6 +17,7 @@ import UnderConstruction from '../components/ui/UnderConstruction';
 import ProfileForm from '../components/profile/ProfileForm';
 import ProfileSummaryCard from '../components/dashboard/ProfileSummaryCard';
 import useMyProfile from '../hooks/useMyProfile';
+import ChangePassword from '../components/settings/ChangePassword';
 
 export default function CompanyDashboard() {
   const { user, logout } = useContext(AuthContext);
@@ -563,6 +564,10 @@ export default function CompanyDashboard() {
                 </p>
               </div>
               <ProfileForm role="company" />
+
+              <div className="pt-2 border-t border-brand-border">
+                <ChangePassword />
+              </div>
             </div>
           )}
 

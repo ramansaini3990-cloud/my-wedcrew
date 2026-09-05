@@ -107,7 +107,15 @@ export default function Register() {
         DOMAIN_CANNOT_RECEIVE_MAIL:
           'That email domain cannot receive mail. Check the part after the @ for a typo.'
       };
-      setError(byCode[data.code] || data.message || 'Failed to register');
+      // No response at all means the request never completed - timeout,
+      // offline, or the API is down. Saying "failed to register" there sends
+      // people hunting for a problem with their details that does not exist.
+      const network = !err.response
+        ? err.code === 'ECONNABORTED'
+          ? 'That took too long. Check your connection and try again.'
+          : 'We could not reach the server. Check your connection and try again.'
+        : null;
+      setError(network || byCode[data.code] || data.message || 'Failed to register');
     } finally {
       setLoading(false);
     }

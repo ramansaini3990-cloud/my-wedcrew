@@ -7,7 +7,13 @@ const userSchema = new mongoose.Schema({
     required: true
   },
   name: { type: String, required: true },
-  phone: { type: String, required: true },
+  // UNIQUE. Duplicates were previously prevented only by the $or lookup in
+  // registerUser, so any other write path could create two accounts on one
+  // number. The index is NOT built automatically - see the schema options at
+  // the bottom of this file - because building it over existing duplicates
+  // fails part way through. Build it deliberately with:
+  //     npm run migrate:phone-unique -- --apply
+  phone: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
 
@@ -99,4 +105,23 @@ userSchema.set('toJSON', {
   }
 });
 
-export default mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
+
+/**
+ * Surfaces a failed background index build.
+ *
+ * Mongoose builds schema-declared indexes on startup and swallows any failure
+ * in silence. That matters for the unique `phone` index: while two accounts
+ * still share a number the build is refused, and without this listener the
+ * only symptom is an index that quietly never exists. Log-only - it never
+ * throws, so a failed build can never stop the server booting.
+ */
+User.on('index', (error) => {
+  if (!error) return;
+  console.warn(`[User] index build failed: ${error.message}`);
+  if (error.code === 11000) {
+    console.warn('       Existing duplicates block it. Run: npm run migrate:phone-unique');
+  }
+});
+
+export default User;

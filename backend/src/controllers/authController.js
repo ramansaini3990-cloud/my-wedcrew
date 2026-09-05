@@ -149,6 +149,17 @@ export const registerUser = async (req, res) => {
       verification_required: verificationRequired()
     });
   } catch (error) {
+    // The $or check above catches almost every duplicate, but it is a
+    // read-then-write: two signups racing the same phone or email can both
+    // pass it and only collide at the unique index. Now that `phone` is
+    // unique too, that collision must read as the SAME clean message the
+    // pre-check gives, not as a 500.
+    if (error?.code === 11000) {
+      const field = Object.keys(error.keyPattern || error.keyValue || {})[0];
+      console.warn(`Registration rejected by unique index on "${field || 'unknown'}"`);
+      return res.status(400).json({ message: 'User with this email or phone already exists' });
+    }
+
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error during registration' });
   }
@@ -223,7 +234,12 @@ export const loginUser = async (req, res) => {
 export const getMe = async (req, res) => {
   try {
     // The user object is attached to the request by the auth middleware
-    const user = await User.findById(req.user.id).select('id role name phone email city state created_at');
+    // email_verified is included so the verification landing page can tell an
+    // ALREADY-USED link apart from an unknown one. The verify endpoint cannot:
+    // it clears the token hash on success, so a replayed link and a bogus link
+    // look identical to it. This reveals only the caller's own state, to
+    // themselves, behind auth - it is not an account-existence oracle.
+    const user = await User.findById(req.user.id).select('id role name phone email city state created_at email_verified');
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

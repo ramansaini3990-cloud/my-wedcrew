@@ -1,4 +1,5 @@
 import Requirement from '../models/Requirement.js';
+import { stringFilter, dateFilter } from '../services/queryFilters.js';
 import { hasActiveSubscription } from '../services/subscriptionService.js';
 import { logFromRequest } from '../services/activityService.js';
 
@@ -71,12 +72,23 @@ export const getRequirements = async (req, res) => {
     const limit = parseInt(req.query.limit) || 100;
     const skip = (page - 1) * limit;
 
+    // The published scope is hardcoded and is NOT taken from the request, so
+    // no filter below can widen it to drafts or closed requirements.
     const query = { status: 'published' };
 
-    // Apply filters
-    if (req.query.city) query.city = req.query.city;
-    if (req.query.category) query.category = req.query.category;
-    if (req.query.date) query.event_date = req.query.date;
+    // Apply filters.
+    //
+    // Every value goes through a coercion helper rather than being assigned
+    // straight from req.query. Express's extended query parser turns
+    // `?city[$ne]=Delhi` into a real object, and assigning that would hand the
+    // caller a live Mongo operator. See services/queryFilters.js.
+    //
+    // `city` and `category` are free text on the Requirement schema - there is
+    // no enum to validate them against - so they are checked for being a
+    // primitive and nothing more.
+    if (req.query.city) query.city = stringFilter(req.query.city);
+    if (req.query.category) query.category = stringFilter(req.query.category);
+    if (req.query.date) query.event_date = dateFilter(req.query.date);
 
     const requirements = await Requirement.find(query)
       .populate('company_id', 'name')

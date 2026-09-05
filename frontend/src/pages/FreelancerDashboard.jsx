@@ -18,6 +18,7 @@ import useUnreadMessages from '../hooks/useUnreadMessages';
 import TravelAvailability from '../components/profile/TravelAvailability';
 import PortfolioManager from '../components/gallery/PortfolioManager';
 import FreelancerEarnings from '../components/payments/FreelancerEarnings';
+import ChangePassword from '../components/settings/ChangePassword';
 
 export default function FreelancerDashboard() {
   const { user, logout } = useContext(AuthContext);
@@ -612,6 +613,10 @@ export default function FreelancerDashboard() {
 
               <div className="pt-2 border-t border-brand-border">
                 <TravelAvailability baseLocation={{ city: myProfile?.city, state: myProfile?.state }} />
+              </div>
+
+              <div className="pt-2 border-t border-brand-border">
+                <ChangePassword />
               </div>
             </div>
           )}

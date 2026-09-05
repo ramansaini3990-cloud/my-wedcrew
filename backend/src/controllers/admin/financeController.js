@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Payment from '../../models/Payment.js';
 import Withdrawal from '../../models/Withdrawal.js';
+import { enumFilter } from '../../services/queryFilters.js';
 import LedgerEntry from '../../models/LedgerEntry.js';
 import FinanceSetting from '../../models/FinanceSetting.js';
 import Notification from '../../models/Notification.js';
@@ -111,7 +112,10 @@ export const listWithdrawals = async (req, res) => {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
     const query = {};
-    if (req.query.status) query.status = req.query.status;
+    // Coerced and checked against the Withdrawal schema's own status enum -
+    // `?status[$ne]=PAID` would otherwise arrive as a live Mongo operator and
+    // rewrite this admin-wide query. See services/queryFilters.js.
+    if (req.query.status) query.status = enumFilter(req.query.status, Withdrawal, 'status');
 
     const [rows, total] = await Promise.all([
       Withdrawal.find(query).populate('user_id', 'name profession').sort({ created_at: -1 })

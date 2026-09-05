@@ -1,8 +1,10 @@
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { resolveProfileMasterData } from '../services/masterDataService.js';
 import { getUpcomingBlocks } from '../services/availabilityService.js';
 import { logFromRequest } from '../services/activityService.js';
 import { validateSocialLinks } from '../services/mediaEmbedService.js';
+import { validatePassword, passwordPolicyError } from '../services/passwordPolicy.js';
 
 /**
  * Role-agnostic profile management for freelancers and companies.
@@ -242,5 +244,93 @@ export const updateMyProfile = async (req, res) => {
   } catch (error) {
     console.error('updateMyProfile error:', error);
     res.status(500).json({ code: 'SERVER_ERROR', message: 'Failed to update profile.' });
+  }
+};
+
+
+/* ------------------------------------------------------------------ */
+/* Password change                                                     */
+/* ------------------------------------------------------------------ */
+
+// @desc    Change the signed-in user's password
+// @route   PATCH /api/profile/password
+// @access  Private (any role)
+//
+// SECURITY NOTES
+//  - The current password is verified BEFORE anything else happens, so a
+//    hijacked session or an unattended browser cannot silently take an account
+//    over: whoever changes the password has to already know it.
+//  - The new password goes through the SAME validatePassword() the signup form
+//    uses. There is no second copy of the rules to drift out of step.
+//  - Hashing is byte-for-byte the scheme registerUser uses (bcrypt, cost 10).
+//    Nothing about how passwords are stored changes here.
+//  - NEITHER password is logged, echoed back, or put in activity metadata.
+//    The audit trail records only that a change happened, and by whom.
+//
+// This is deliberately NOT a password reset: there is no way in without the
+// existing password. A forgot-password flow needs its own emailed, expiring,
+// single-use token and is a separate feature.
+export const changeMyPassword = async (req, res) => {
+  try {
+    const currentPassword = String(req.body?.current_password ?? req.body?.currentPassword ?? '');
+    const newPassword = String(req.body?.new_password ?? req.body?.newPassword ?? '');
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        code: 'MISSING_FIELDS',
+        message: 'Enter your current password and a new one.'
+      });
+    }
+
+    const user = await User.findById(req.user.id).select('password name role');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Checked first, and answered with the same generic wording whatever the
+    // reason, so this endpoint cannot be used to probe an account.
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        code: 'INCORRECT_PASSWORD',
+        message: 'Your current password is not correct.'
+      });
+    }
+
+    const policy = validatePassword(newPassword);
+    if (!policy.ok) {
+      return res.status(400).json(passwordPolicyError(policy));
+    }
+
+    // Re-submitting the existing password is almost always a mistake, and
+    // silently "succeeding" would leave the user believing they had rotated it.
+    if (await bcrypt.compare(newPassword, user.password)) {
+      return res.status(400).json({
+        code: 'SAME_PASSWORD',
+        message: 'Your new password must be different from your current one.'
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(newPassword, salt);
+    await User.updateOne({ _id: user._id }, { $set: { password: hashed } });
+
+    // Metadata carries the role and nothing else - no password, no hash, no
+    // length, no hint of either value.
+    await logFromRequest(req, {
+      eventType: 'user.password_changed',
+      category: 'users',
+      severity: 'success',
+      title: 'Password changed',
+      description: `${user.name} changed their password`,
+      actor: { userId: user._id, name: user.name, role: user.role },
+      target: { type: 'user', id: user._id, label: user.name },
+      metadata: { account_type: user.role }
+    });
+
+    res.json({ message: 'Password updated successfully.' });
+  } catch (error) {
+    console.error('changeMyPassword error:', error);
+    res.status(500).json({ message: 'Server error while changing your password' });
   }
 };

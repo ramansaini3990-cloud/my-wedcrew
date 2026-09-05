@@ -77,7 +77,12 @@ export default function Login() {
         setError('');
       } else {
         setUnverifiedEmail('');
-        setError(data.message || 'Failed to login');
+        const network = !err.response
+          ? err.code === 'ECONNABORTED'
+            ? 'That took too long. Check your connection and try again.'
+            : 'We could not reach the server. Check your connection and try again.'
+          : null;
+        setError(network || data.message || 'Failed to login');
       }
     } finally {
       setLoading(false);

@@ -1,4 +1,5 @@
 import Requirement from '../../models/Requirement.js';
+import { stringFilter, enumFilter } from '../../services/queryFilters.js';
 
 // @desc    Get all requirements for admin
 // @route   GET /api/admin/requirements
@@ -11,10 +12,18 @@ export const getAdminRequirements = async (req, res) => {
 
     const query = {};
 
-    // Filters
-    if (req.query.status) query.status = req.query.status;
-    if (req.query.city) query.city = req.query.city;
-    if (req.query.category) query.category = req.query.category;
+    // Filters.
+    //
+    // Coerced rather than assigned: Express's extended query parser turns
+    // `?status[$ne]=draft` into a live Mongo operator object. This list is
+    // unscoped - it deliberately returns drafts too - so an injected operator
+    // here is a query-rewriting primitive on the whole collection.
+    //
+    // `status` is validated against the enum declared on the Requirement
+    // schema, read at call time so there is no second copy to drift.
+    if (req.query.status) query.status = enumFilter(req.query.status, Requirement, 'status');
+    if (req.query.city) query.city = stringFilter(req.query.city);
+    if (req.query.category) query.category = stringFilter(req.query.category);
 
     const requirements = await Requirement.find(query)
       .populate('company_id', 'name')

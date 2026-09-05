@@ -6,6 +6,7 @@ import {
 import api from '../../utils/api';
 import { formatPaise, formatBps, METHOD_LABEL } from '../../utils/money';
 import { StatCard, StatusBadge, EmptyState, Feedback, TableShell, inputClass } from './PaymentPrimitives';
+import { AUTOMATIC_PAYOUTS_ENABLED } from '../../config/features';
 
 /**
  * Freelancer "Earnings" panel.
@@ -261,6 +262,14 @@ export default function FreelancerEarnings() {
             {data?.payout_account ? <> · to {data.payout_account.masked}</> : null}
           </p>
           <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="Amount (₹)" className={inputClass} aria-label="Withdrawal amount" />
+          {!AUTOMATIC_PAYOUTS_ENABLED && (
+            <p className="rounded-lg border border-yellow-200 bg-yellow-50/70 px-3 py-2 text-[12px] leading-relaxed text-yellow-900">
+              <strong className="font-semibold">Payouts are made by hand at the moment.</strong>{' '}
+              Your request is recorded straight away and stays marked <em>Processing</em> until our
+              team transfers the money and marks it paid. Automatic bank transfers are not switched
+              on yet, so please allow a few working days.
+            </p>
+          )}
           <Feedback type="error">{formError}</Feedback>
           <button type="submit" disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-brand-primaryDark disabled:opacity-60">
             {busy && <Loader2 size={13} className="animate-spin" aria-hidden="true" />} Request withdrawal
@@ -326,6 +335,13 @@ export default function FreelancerEarnings() {
       {/* Withdrawal history */}
       <section className="rounded-xl border border-brand-border bg-brand-surface p-4 sm:p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-textSec">Withdrawals</h3>
+        {!AUTOMATIC_PAYOUTS_ENABLED && (
+          <p className="mt-1.5 text-[12px] leading-relaxed text-brand-textSec">
+            Requests are settled manually right now, so a withdrawal stays on{' '}
+            <span className="font-semibold text-brand-navy">Processing</span> until our team has
+            transferred the money. That status is real - it is not a display placeholder.
+          </p>
+        )}
         <div className="mt-4">
           {withdrawals.length === 0 ? (
             <EmptyState icon={ArrowDownToLine} title="No withdrawal requests" description="Once you have an available balance and a payout account, you can withdraw here." />

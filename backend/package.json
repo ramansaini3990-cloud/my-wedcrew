@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "start:e2e": "node src/scripts/startE2E.js",
     "dev": "nodemon server.js",
     "seed:admin": "node seedAdmin.js",
     "seed:plans": "node src/scripts/seedPlans.js",
@@ -22,7 +23,8 @@
     "test:gallery": "node src/scripts/galleryTest.js",
     "test:connection": "node src/scripts/connectionTest.js",
     "test:payment": "node src/scripts/paymentTest.js",
-    "migrate:email-verified": "node src/scripts/migrateEmailVerified.js"
+    "migrate:email-verified": "node src/scripts/migrateEmailVerified.js",
+    "migrate:phone-unique": "node src/scripts/migratePhoneUnique.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

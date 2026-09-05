@@ -32,8 +32,13 @@ export const AuthProvider = ({ children }) => {
     fetchUser();
   }, [token]);
 
+  // Bounded so a hung connection surfaces as an error the form can show,
+  // rather than a spinner that never clears. Deliberately NOT a global axios
+  // default: gallery uploads legitimately run longer than this.
+  const AUTH_TIMEOUT_MS = 15_000;
+
   const login = async (email, password) => {
-    const res = await api.post('/api/auth/login', { email, password });
+    const res = await api.post('/api/auth/login', { email, password }, { timeout: AUTH_TIMEOUT_MS });
     setToken(res.data.token);
     setUser(res.data.user);
     localStorage.setItem('token', res.data.token);
@@ -57,7 +62,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
-    const res = await api.post('/api/auth/register', userData);
+    const res = await api.post('/api/auth/register', userData, { timeout: AUTH_TIMEOUT_MS });
     return res.data;
   };
 

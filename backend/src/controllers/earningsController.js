@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Payment from '../models/Payment.js';
 import Withdrawal from '../models/Withdrawal.js';
+import { enumFilter } from '../services/queryFilters.js';
 import PayoutAccount from '../models/PayoutAccount.js';
 import FinanceSetting from '../models/FinanceSetting.js';
 import Notification from '../models/Notification.js';
@@ -208,8 +209,11 @@ export const listWithdrawals = async (req, res) => {
     if (!freelancerOnly(req, res)) return;
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+    // user_id is taken from the verified session, never the request, so this
+    // list is always scoped to the caller. The status filter is still coerced
+    // and enum-checked so `?status[$ne]=X` cannot rewrite the query around it.
     const query = { user_id: idOf(req) };
-    if (req.query.status) query.status = req.query.status;
+    if (req.query.status) query.status = enumFilter(req.query.status, Withdrawal, 'status');
 
     const [rows, total] = await Promise.all([
       Withdrawal.find(query).sort({ created_at: -1 }).skip((page - 1) * limit).limit(limit).lean(),

@@ -3,6 +3,8 @@ import { Plus, Loader2, X, IndianRupee, Wallet, RotateCcw, Clock, Banknote, Cred
 import api from '../../utils/api';
 import { formatPaise, formatBps, METHOD_LABEL } from '../../utils/money';
 import { StatCard, StatusBadge, EmptyState, Feedback, TableShell, inputClass } from './PaymentPrimitives';
+import UnderConstruction from '../ui/UnderConstruction';
+import { ONLINE_PAYMENTS_ENABLED } from '../../config/features';
 
 /**
  * Company "Payments" panel.
@@ -27,6 +29,9 @@ const FILTERS = [
 /* New payment form                                                    */
 /* ================================================================== */
 function NewPayment({ connections, config, onDone, onCancel }) {
+  // Always starts on cash. While ONLINE_PAYMENTS_ENABLED is false it can never
+  // move off it - the online chip is disabled and the guard in submit() below
+  // refuses an online method even if the state were forced.
   const [form, setForm] = useState({ freelancer_id: '', amount: '', method: 'cash', note: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -38,6 +43,11 @@ function NewPayment({ connections, config, onDone, onCancel }) {
     setError(null);
     if (!form.freelancer_id) return setError('Choose a professional.');
     if (!form.amount) return setError('Enter an amount.');
+    // Belt and braces: the UI cannot select 'online' while the gate is closed,
+    // so reaching here means the state was tampered with.
+    if (!ONLINE_PAYMENTS_ENABLED && form.method === 'online') {
+      return setError('Online payments are not available yet. Record this as a cash payment instead.');
+    }
 
     setBusy(true);
     try {
@@ -98,21 +108,36 @@ function NewPayment({ connections, config, onDone, onCancel }) {
       <div>
         <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-brand-textSec">Payment method</span>
         <div className="flex gap-2">
-          {[{ id: 'online', label: 'Online payment', icon: CreditCard }, { id: 'cash', label: 'Cash payment', icon: Banknote }].map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => set('method', m.id)}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition-colors ${
-                form.method === m.id
-                  ? 'border-brand-primary bg-brand-primary/10 text-brand-primary'
-                  : 'border-brand-border text-brand-textSec hover:border-brand-primary/40'
-              }`}
-            >
-              <m.icon size={13} aria-hidden="true" /> {m.label}
-            </button>
-          ))}
+          {[{ id: 'online', label: 'Online payment', icon: CreditCard }, { id: 'cash', label: 'Cash payment', icon: Banknote }].map((m) => {
+            const locked = m.id === 'online' && !ONLINE_PAYMENTS_ENABLED;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                disabled={locked}
+                aria-disabled={locked}
+                title={locked ? 'Online payments are being set up' : undefined}
+                onClick={() => !locked && set('method', m.id)}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                  locked
+                    ? 'cursor-not-allowed border-dashed border-brand-border bg-brand-bg text-brand-muted'
+                    : form.method === m.id
+                      ? 'border-brand-primary bg-brand-primary/10 text-brand-primary'
+                      : 'border-brand-border text-brand-textSec hover:border-brand-primary/40'
+                }`}
+              >
+                <m.icon size={13} aria-hidden="true" /> {m.label}
+                {locked && <span className="font-normal">(coming soon)</span>}
+              </button>
+            );
+          })}
         </div>
+        {!ONLINE_PAYMENTS_ENABLED && (
+          <p className="mt-1.5 text-[11.5px] leading-relaxed text-brand-textSec">
+            Online card and UPI payments are still being set up. Cash payments work normally --
+            record the amount here and your professional confirms receipt.
+          </p>
+        )}
       </div>
 
       <div>
@@ -213,7 +238,9 @@ export default function CompanyPayments() {
         <div>
           <h2 className="font-serif text-lg font-bold text-brand-navy">Payments</h2>
           <p className="mt-0.5 text-[12.5px] text-brand-textSec">
-            Pay your crew online or record a cash settlement.
+            {ONLINE_PAYMENTS_ENABLED
+              ? 'Pay your crew online or record a cash settlement.'
+              : 'Record a cash settlement with your crew. Online payments are coming soon.'}
           </p>
         </div>
         {!creating && (
@@ -274,7 +301,15 @@ export default function CompanyPayments() {
         </div>
 
         <div className="mt-4">
-          {loading ? (
+          {/* The Online tab is the online-payment surface, so the gate shows here.
+              Historic online payments, if any exist, are still reachable from
+              the All tab - nothing is hidden from the record. */}
+          {filter === 'online' && !ONLINE_PAYMENTS_ENABLED ? (
+            <UnderConstruction
+              title="Online payments"
+              description="Card, UPI and netbanking payments are being set up with our payment provider and are not available yet. Cash payments work today: use Make a payment, choose Cash, and your professional confirms receipt."
+            />
+          ) : loading ? (
             <p className="flex items-center gap-2 text-[13px] text-brand-textSec">
               <Loader2 size={14} className="animate-spin" aria-hidden="true" /> Loading…
             </p>
