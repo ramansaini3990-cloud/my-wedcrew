@@ -18,6 +18,7 @@
     "test:master": "node src/scripts/masterDataTest.js",
     "test:public": "node src/scripts/publicProfileTest.js",
     "cleanup:activity": "node src/scripts/cleanupActivityLogs.js",
+    "cleanup:orphans": "node src/scripts/cleanupOrphans.js",
     "test:activity": "node src/scripts/activityLogTest.js",
     "test:privacy": "node src/scripts/privacyPasswordTest.js",
     "test:gallery": "node src/scripts/galleryTest.js",

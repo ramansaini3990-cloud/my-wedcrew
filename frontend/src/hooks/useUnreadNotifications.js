@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../utils/api';
 import { useSocket } from '../context/SocketContext';
+import { NOTIFICATIONS_CHANGED } from '../components/NotificationsView';
 
 /**
  * The signed-in user's unread system-notification count, kept live.
@@ -32,6 +33,15 @@ export default function useUnreadNotifications() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // The inbox lives in a different component tree, so when something is read
+  // there this listener is how the dot finds out - without it the count only
+  // dropped on a page reload.
+  useEffect(() => {
+    const onChange = () => refresh();
+    window.addEventListener(NOTIFICATIONS_CHANGED, onChange);
+    return () => window.removeEventListener(NOTIFICATIONS_CHANGED, onChange);
+  }, [refresh]);
 
   useEffect(() => {
     if (!socket) return undefined;

@@ -351,6 +351,7 @@ const run = async () => {
   } finally {
     section('Cleanup');
     const User = (await import('../models/User.js')).default;
+    const EmailLog = (await import('../models/EmailLog.js')).default;
     const models = {
       Payment: (await import('../models/Payment.js')).default,
       LedgerEntry: (await import('../models/LedgerEntry.js')).default,
@@ -381,7 +382,15 @@ const run = async () => {
       await models.Notification.deleteMany({ recipient_id: { $in: ids } });
       await models.BookingRequest.deleteMany({ $or: [{ freelancer_id: { $in: ids } }, { company_id: { $in: ids } }] });
       await models.Subscription.deleteMany({ user_id: { $in: ids } });
-      await models.ActivityLog.deleteMany({ 'actor.user_id': { $in: ids } });
+      // Both sides: entries this account CAUSED, and entries where it was the
+      // subject of somebody else's action - an admin creating its subscription
+      // logs actor=admin, target=test user, and those survived an actor-only sweep.
+      await models.ActivityLog.deleteMany({
+        $or: [{ 'actor.user_id': { $in: ids } }, { 'target.id': { $in: ids } }]
+      });
+      // Verification and reset mail sent to these accounts. No suite cleaned
+      // this up, so every run left its email-log rows behind for good.
+      await EmailLog.deleteMany({ user_id: { $in: ids } });
       await User.deleteMany({ _id: { $in: ids } });
     }
     await models.ActivityLog.deleteMany({ 'target.label': /^PAY / });

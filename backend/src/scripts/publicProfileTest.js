@@ -247,6 +247,9 @@ const run = async () => {
     const AvailabilityBlock = (await import('../models/AvailabilityBlock.js')).default;
     const Requirement = (await import('../models/Requirement.js')).default;
     const Notification = (await import('../models/Notification.js')).default;
+    const EmailLog = (await import('../models/EmailLog.js')).default;
+    const ActivityLog = (await import('../models/ActivityLog.js')).default;
+    const Subscription = (await import('../models/Subscription.js')).default;
 
     const testUsers = await User.find({ email: new RegExp(`${TAG.replace('.', '\\.')}$`), role: { $ne: 'admin' } }).select('_id');
     const ids = testUsers.map((u) => u._id);
@@ -254,6 +257,15 @@ const run = async () => {
       await AvailabilityBlock.deleteMany({ user_id: { $in: ids } });
       await Requirement.deleteMany({ company_id: { $in: ids } });
       await Notification.deleteMany({ recipient_id: { $in: ids } });
+      // Verification and reset mail sent to these accounts. No suite cleaned
+      // this up, so every run left its email-log rows behind for good.
+      await EmailLog.deleteMany({ user_id: { $in: ids } });
+      await Subscription.deleteMany({ user_id: { $in: ids } });
+      // Both sides: entries this account CAUSED, and entries where it was the
+      // subject of somebody else's action (an admin verifying it, say).
+      await ActivityLog.deleteMany({
+        $or: [{ 'actor.user_id': { $in: ids } }, { 'target.id': { $in: ids } }]
+      });
       await User.deleteMany({ _id: { $in: ids } });
     }
     console.log(`  Removed ${ids.length} throwaway account(s) and their data.`);

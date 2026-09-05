@@ -30,11 +30,6 @@ const SECTIONS = {
     description:
       'Exportable reporting on bookings, applications, subscriptions and platform revenue over a chosen period.'
   },
-  notifications: {
-    title: 'Notifications',
-    description:
-      'Compose and broadcast announcements to companies and professionals, and review what the platform has already sent.'
-  },
   settings: {
     title: 'Settings',
     description:

@@ -32,6 +32,7 @@ import AdminMasterData from './pages/admin/MasterData';
 import AdminActivityLog from './pages/admin/ActivityLog';
 import AdminFinance from './pages/admin/Finance';
 import AdminEmailLogs from './pages/admin/EmailLogs';
+import AdminNotifications from './pages/admin/Notifications';
 import AdminSettings from './pages/admin/Settings';
 
 import ScrollToTop from './components/ScrollToTop';
@@ -128,6 +129,7 @@ function App() {
               <Route path="activity-logs" element={<AdminActivityLog />} />
               <Route path="payments" element={<AdminFinance />} />
               <Route path="email-logs" element={<AdminEmailLogs />} />
+              <Route path="notifications" element={<AdminNotifications />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="*" element={<AdminComingSoon />} />
             </Route>

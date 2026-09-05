@@ -226,6 +226,7 @@ const run = async () => {
     const Subscription = (await import('../models/Subscription.js')).default;
     const ActivityLog = (await import('../models/ActivityLog.js')).default;
     const Notification = (await import('../models/Notification.js')).default;
+    const EmailLog = (await import('../models/EmailLog.js')).default;
 
     const testUsers = await User.find({
       email: new RegExp(`^saved\\..*${TAG.replace('.', '\\.')}$`),
@@ -236,7 +237,15 @@ const run = async () => {
       await SavedProfessional.deleteMany({ $or: [{ company_id: { $in: ids } }, { freelancer_id: { $in: ids } }] });
       await Subscription.deleteMany({ user_id: { $in: ids } });
       await Notification.deleteMany({ recipient_id: { $in: ids } });
-      await ActivityLog.deleteMany({ 'actor.user_id': { $in: ids } });
+      // Both sides: entries this account CAUSED, and entries where it was the
+      // subject of somebody else's action - an admin creating its subscription
+      // logs actor=admin, target=test user, and those survived an actor-only sweep.
+      await ActivityLog.deleteMany({
+        $or: [{ 'actor.user_id': { $in: ids } }, { 'target.id': { $in: ids } }]
+      });
+      // Verification and reset mail sent to these accounts. No suite cleaned
+      // this up, so every run left its email-log rows behind for good.
+      await EmailLog.deleteMany({ user_id: { $in: ids } });
       await User.deleteMany({ _id: { $in: ids } });
     }
     await ActivityLog.deleteMany({ 'target.label': /^SAVED / });
