@@ -16,6 +16,8 @@ import PublicProfile from './pages/PublicProfile';
 import RequirementDetail from './pages/RequirementDetail';
 import Messages from './pages/Messages';
 import VerifyEmail from './pages/VerifyEmail';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 // Admin imports
 import ErrorBoundary from './components/ErrorBoundary';
@@ -57,6 +59,8 @@ function App() {
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
               <Route path="verify-email" element={<VerifyEmail />} />
+              <Route path="forgot-password" element={<ForgotPassword />} />
+              <Route path="reset-password" element={<ResetPassword />} />
               <Route path="requirements" element={<Requirements />} />
               <Route path="requirements/:id" element={<RequirementDetail />} />
               <Route path="professionals/:id" element={<PublicProfile />} />

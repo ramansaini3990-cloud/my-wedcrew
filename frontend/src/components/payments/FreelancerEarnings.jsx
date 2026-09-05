@@ -7,6 +7,7 @@ import api from '../../utils/api';
 import { formatPaise, formatBps, METHOD_LABEL } from '../../utils/money';
 import { StatCard, StatusBadge, EmptyState, Feedback, TableShell, inputClass } from './PaymentPrimitives';
 import { AUTOMATIC_PAYOUTS_ENABLED } from '../../config/features';
+import { describeApiError } from '../../utils/apiError';
 
 /**
  * Freelancer "Earnings" panel.
@@ -39,7 +40,7 @@ function PayoutAccountForm({ account, onSaved }) {
       setEditing(false);
       setForm({ account_holder_name: data.data.account_holder_name || '', account_number: '', ifsc: '', upi_id: '' });
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not save your payout account.');
+      setError(describeApiError(err, 'Could not save your payout account.'));
     } finally {
       setBusy(false);
     }
@@ -181,7 +182,7 @@ export default function FreelancerEarnings() {
       flash(action === 'cash-confirm' ? 'Cash payment confirmed.' : 'Dispute raised. Our team will review it.');
       load();
     } catch (err) {
-      flash(err.response?.data?.message || 'Could not update this payment.');
+      flash(describeApiError(err, 'Could not update this payment.'));
     }
   };
 
@@ -194,7 +195,7 @@ export default function FreelancerEarnings() {
       flash('Withdrawal requested.');
       load();
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Could not request this withdrawal.');
+      setFormError(describeApiError(err, 'Could not request this withdrawal.'));
     } finally {
       setBusy(false);
     }

@@ -5,6 +5,7 @@ import { formatPaise, formatBps, METHOD_LABEL } from '../../utils/money';
 import { StatCard, StatusBadge, EmptyState, Feedback, TableShell, inputClass } from './PaymentPrimitives';
 import UnderConstruction from '../ui/UnderConstruction';
 import { ONLINE_PAYMENTS_ENABLED } from '../../config/features';
+import { describeApiError } from '../../utils/apiError';
 
 /**
  * Company "Payments" panel.
@@ -73,7 +74,7 @@ function NewPayment({ connections, config, onDone, onCancel }) {
         onDone('Cash payment recorded. The professional will confirm receipt.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not start this payment.');
+      setError(describeApiError(err, 'Could not start this payment.'));
     } finally {
       setBusy(false);
     }
@@ -228,7 +229,7 @@ export default function CompanyPayments() {
       flash(data.message || 'Refund requested.');
       load();
     } catch (err) {
-      flash(err.response?.data?.message || 'Could not request a refund.');
+      flash(describeApiError(err, 'Could not request a refund.'));
     }
   };
 

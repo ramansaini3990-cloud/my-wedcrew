@@ -1,6 +1,7 @@
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
 import { uploadMiddleware } from '../services/uploadService.js';
+import { uploadLimiter } from '../middleware/rateLimiters.js';
 import {
   listMyGallery,
   uploadMedia,
@@ -37,8 +38,11 @@ router.get('/me', listMyGallery);
  * Multer errors (file too large, wrong type) surface as thrown errors rather
  * than a 500, so the freelancer sees why the upload was refused.
  */
+// The ONLY limited route in this router: it accepts a real file and writes up
+// to 100MB to disk. Everything below stores JSON and is deliberately unmetered.
 router.post(
   '/upload',
+  uploadLimiter,
   (req, res, next) =>
     uploadMiddleware.single('file')(req, res, (err) => {
       if (!err) return next();
@@ -56,6 +60,9 @@ router.post(
   uploadMedia
 );
 
+// Stores a YouTube/Instagram/Vimeo URL. No file, no disk, no third party at
+// write time - an ordinary authenticated write, and not rate limited. Sharing
+// a router with /upload is not a reason to share its limit.
 router.post('/', createGalleryItem);
 router.patch('/reorder', reorderGallery);       // before /:id so "reorder" is not read as an id
 router.patch('/:id/feature', toggleFeatured);

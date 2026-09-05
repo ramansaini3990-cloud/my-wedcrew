@@ -7,6 +7,7 @@ import {
 import api from '../../utils/api';
 import { mediaUrl, sourceMeta, detectSource, validateMediaUrl } from '../../utils/mediaEmbed';
 import MediaModal from './MediaModal';
+import { describeApiError } from '../../utils/apiError';
 
 /**
  * Freelancer portfolio management: gallery CRUD plus public social links.
@@ -92,7 +93,7 @@ function ItemForm({ initial, onCancel, onSaved }) {
         onSaved(data.data, 'added');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not save this item.');
+      setError(describeApiError(err, 'Could not save this item.'));
     } finally {
       setBusy(false);
     }
@@ -234,7 +235,7 @@ function SocialLinks({ value, onSaved }) {
       setMsg('Social links saved.');
       onSaved?.(data.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not save social links.');
+      setError(describeApiError(err, 'Could not save social links.'));
     } finally {
       setBusy(false);
     }

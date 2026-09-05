@@ -186,9 +186,10 @@
       { "script": "test:privacy", "file": "backend/src/scripts/privacyPasswordTest.js", "assertions": 45 },
       { "script": "test:gallery", "file": "backend/src/scripts/galleryTest.js", "assertions": 78 },
       { "script": "test:connection", "file": "backend/src/scripts/connectionTest.js", "assertions": 51 },
-      { "script": "test:payment", "file": "backend/src/scripts/paymentTest.js", "assertions": 72 }
+      { "script": "test:payment", "file": "backend/src/scripts/paymentTest.js", "assertions": 72 },
+      { "script": "test:saved", "file": "backend/src/scripts/savedProfessionalsTest.js", "assertions": 41 }
     ],
-    "total_assertions": 509,
+    "total_assertions": 550,
     "last_status": "ALL GREEN",
     "frontend_tests": "NOT_IMPLEMENTED - quality gates are `npm run build` and `npm run lint`",
     "lint_baseline": 30,
@@ -314,7 +315,7 @@
     "Do not reset MongoDB - real user data exists.",
     "Do not overwrite .env - edit .env.example instead.",
     "Never expose or log secrets.",
-    "Run the E2E suites after changes (509 assertions is the baseline).",
+    "Run the E2E suites after changes (550 assertions is the baseline).",
     "Run `npm run build` in frontend/ after any frontend change.",
     "Verify the backend starts after any backend change.",
     "Perform regression testing across all nine suites.",

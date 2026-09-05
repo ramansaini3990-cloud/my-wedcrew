@@ -17,7 +17,7 @@ import { API_BASE_URL } from '../utils/api';
  * Only the DECISION TO CONNECT is gated here. The auth handshake, room
  * joining, unread emission and notification push are untouched.
  */
-const NO_SOCKET_ROUTES = ['/login', '/register', '/verify-email'];
+const NO_SOCKET_ROUTES = ['/login', '/register', '/verify-email', '/forgot-password', '/reset-password'];
 
 const SocketContext = createContext(null);
 

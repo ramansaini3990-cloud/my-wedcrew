@@ -18,6 +18,8 @@ const EXACT = {
   '/login': 'Sign In',
   '/register': 'Join',
   '/verify-email': 'Confirm your email',
+  '/forgot-password': 'Reset your password',
+  '/reset-password': 'Choose a new password',
   '/requirements': 'Requirements',
   '/freelancers': 'Professionals',
   '/messages': 'Messages',

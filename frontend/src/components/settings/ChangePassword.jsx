@@ -3,6 +3,7 @@ import { KeyRound, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
 import PasswordInput from '../ui/PasswordInput';
 import { isPasswordStrong } from '../../utils/passwordRules';
+import { describeApiError } from '../../utils/apiError';
 
 /**
  * "Change your password" panel, shared by the company settings tab, the
@@ -52,19 +53,10 @@ export default function ChangePassword() {
       setNext('');
       setConfirm('');
     } catch (err) {
-      // No response at all means the request never completed - say so, rather
-      // than implying the password was wrong.
-      if (!err.response) {
-        setError(
-          err.code === 'ECONNABORTED'
-            ? 'That took too long. Check your connection and try again.'
-            : 'We could not reach the server. Check your connection and try again.'
-        );
-      } else if (err.response.status === 429) {
-        setError('Too many attempts. Wait a few minutes before trying again.');
-      } else {
-        setError(err.response?.data?.message || 'Could not change your password.');
-      }
+      // One describer for every failure shape: a network drop, a timeout, a rate
+      // limit with its real countdown, or the server's own message. The 429
+      // branch used to say "wait a few minutes" without saying how many.
+      setError(describeApiError(err, 'Could not change your password.'));
     } finally {
       setBusy(false);
     }

@@ -61,6 +61,14 @@ const userSchema = new mongoose.Schema({
   /** Drives the 60-second resend throttle. */
   email_verification_sent_at: { type: Date, default: null },
 
+  // Password reset. Same discipline as the verification token above: only the
+  // SHA-256 HASH is stored and it is `select: false`, so a leaked database
+  // dump or a careless query cannot be replayed into an account takeover. The
+  // raw token exists only in the emailed link.
+  password_reset_token_hash: { type: String, select: false, default: null },
+  password_reset_expires: { type: Date, default: null },
+  password_reset_sent_at: { type: Date, default: null },
+
   /**
    * Public social profile URLs. Validated against per-platform host
    * allow-lists in services/mediaEmbedService.js before they are written.

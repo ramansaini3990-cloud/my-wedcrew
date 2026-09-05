@@ -23,6 +23,7 @@
     "test:gallery": "node src/scripts/galleryTest.js",
     "test:connection": "node src/scripts/connectionTest.js",
     "test:payment": "node src/scripts/paymentTest.js",
+    "test:saved": "node src/scripts/savedProfessionalsTest.js",
     "migrate:email-verified": "node src/scripts/migrateEmailVerified.js",
     "migrate:phone-unique": "node src/scripts/migratePhoneUnique.js"
   },

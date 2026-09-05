@@ -91,6 +91,57 @@ This link expires in 24 hours. If you did not create an account, ignore this ema
   };
 };
 
+/**
+ * Password-reset email body.
+ *
+ * Same construction as the verification mail: no remote images, and the link
+ * appears as both a button and visible text. The extra line about ignoring the
+ * message matters more here - a reset mail can arrive because somebody else
+ * typed this address, and the recipient needs to know nothing has changed.
+ */
+const passwordResetTemplate = ({ name, resetUrl }) => {
+  const safeName = String(name || 'there').replace(/[<>&]/g, '');
+  return {
+    subject: 'Reset your password — mywedcrew.com',
+    html: `<!doctype html>
+<html><body style="margin:0;padding:0;background:#F8F5F0;font-family:Segoe UI,Helvetica,Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 24px;">
+    <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#0B1835;">
+      mywed<span style="color:#DE601E;">crew</span><span style="color:#64748B;">.com</span>
+    </p>
+    <div style="background:#FFFFFF;border:1px solid #E5E7EB;border-radius:12px;padding:28px;">
+      <h1 style="margin:0 0 12px;font-size:19px;color:#0B1835;">Reset your password</h1>
+      <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#0B1835;">
+        Hi ${safeName}, we received a request to reset the password for this account. Choose a new one using the link below.
+      </p>
+      <a href="${resetUrl}" style="display:inline-block;background:#DE601E;color:#FFFFFF;text-decoration:none;font-size:14px;font-weight:600;padding:12px 22px;border-radius:8px;">
+        Choose a new password
+      </a>
+      <p style="margin:22px 0 6px;font-size:12px;color:#64748B;">
+        If the button does not work, copy this link into your browser:
+      </p>
+      <p style="margin:0;font-size:12px;word-break:break-all;color:#2563EB;">${resetUrl}</p>
+      <p style="margin:22px 0 0;font-size:12px;color:#64748B;">
+        This link expires in 1 hour and can be used once. If you did not ask to reset your password, ignore this email — nothing has changed and your current password still works.
+      </p>
+    </div>
+    <p style="margin:20px 0 0;font-size:11px;color:#94A3B8;text-align:center;">
+      Sent by mywedcrew.com — India's wedding production network.
+    </p>
+  </div>
+</body></html>`,
+    text: `Reset your password
+
+Hi ${safeName}, we received a request to reset the password for this account.
+
+Choose a new password:
+${resetUrl}
+
+This link expires in 1 hour and can be used once. If you did not ask to reset
+your password, ignore this email - nothing has changed.`
+  };
+};
+
 /* ================================================================== */
 /* Adapters                                                            */
 /* ================================================================== */
@@ -101,11 +152,12 @@ const consoleAdapter = {
    * Sends nothing. Prints the link so local development and the E2E suites
    * work with zero configuration — the mail equivalent of PAYMENT_PROVIDER=sandbox.
    */
-  async send({ to, subject, verifyUrl }) {
+  async send({ to, subject, verifyUrl, resetUrl }) {
     console.log('\n──────────── EMAIL (console adapter — nothing was sent) ────────────');
     console.log(`  to      : ${to}`);
     console.log(`  subject : ${subject}`);
     if (verifyUrl) console.log(`  link    : ${verifyUrl}`);
+    if (resetUrl) console.log(`  link    : ${resetUrl}`);
     console.log('────────────────────────────────────────────────────────────────────\n');
     return { ok: true, id: null };
   }
@@ -240,4 +292,44 @@ export const logEmailPolicy = (logger = console) => {
   logger.log(`[email] provider: ${name} | from: ${fromName()} <${fromAddress()}> | links point at ${appPublicUrl()}`);
 };
 
-export default { sendVerificationEmail, logEmailPolicy, activeProviderName, appPublicUrl, PROVIDERS };
+/**
+ * Sends the password-reset link.
+ *
+ * Mirrors sendVerificationEmail exactly, including the EmailLog row. That row
+ * records METADATA ONLY - recipient, subject, template, provider, outcome. The
+ * token and the reset URL are never written to it, so an admin reading the
+ * email log cannot take over an account from it.
+ */
+export const sendPasswordResetEmail = async ({ to, name, resetUrl, userId }) => {
+  const { subject, html, text } = passwordResetTemplate({ name, resetUrl });
+  const providerName = activeProviderName();
+
+  let result;
+  try {
+    result = await adapter().send({ to, name, subject, html, text, resetUrl });
+  } catch (error) {
+    result = { ok: false, error: error.message };
+  }
+
+  await recordAttempt({
+    to,
+    subject,
+    template: 'password_reset',
+    provider: providerName,
+    status: result.ok ? 'SENT' : 'FAILED',
+    errorMessage: result.ok ? null : result.error,
+    userId
+  });
+
+  if (!result.ok) console.error(`[email] password reset send failed via ${providerName}: ${result.error}`);
+  return result;
+};
+
+export default {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  logEmailPolicy,
+  activeProviderName,
+  appPublicUrl,
+  PROVIDERS
+};

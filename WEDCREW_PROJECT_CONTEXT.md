@@ -958,7 +958,8 @@ accounts that each suite deletes on completion.
 | `test:gallery` | Portfolio/gallery + media security | 78 |
 | `test:connection` | Connection lifecycle + unread badge | 51 |
 | `test:payment` | Payment system | 72 |
-| **Total** | | **509 — all green** |
+| `test:saved` | Company saved-professional bookmarks | 41 |
+| **Total** | | **550 — all green** |
 
 **Other scripts:** `seed:admin`, `seed:plans`, `seed:master`,
 `migrate:subscriptions`, `migrate:master`, `cleanup:activity`.
@@ -1151,7 +1152,7 @@ NOTIFICATION ◄── booking / application / payment / withdrawal (NOT chat)
 9. **Do not reset MongoDB.** Real user data exists.
 10. **Do not overwrite `.env`.** Edit `.env.example` instead.
 11. Never expose or log secrets.
-12. Run the E2E suites after changes (§24) — **509 assertions is the baseline**.
+12. Run the E2E suites after changes (§24) — **550 assertions is the baseline**.
 13. Run `npm run build` in `frontend/` after any frontend change.
 14. Verify the backend starts (`npm start`) after any backend change.
 15. Perform regression testing across all nine suites, not just the one you touched.
@@ -1208,7 +1209,7 @@ NOTIFICATION ◄── booking / application / payment / withdrawal (NOT chat)
 | Email notifications | 🔴 NOT IMPLEMENTED | — |
 | Deployment config | ⚠️ NEEDS REVIEW | Nothing in repo |
 | CORS for production | ⚠️ NEEDS REVIEW | Currently allows all origins |
-| Automated tests | ✅ COMPLETE | 509 assertions, 9 suites, all green |
+| Automated tests | ✅ COMPLETE | 550 assertions, 10 suites, all green |
 | Frontend tests | 🔴 NOT IMPLEMENTED | Build + lint only |
 
 ---
@@ -1245,7 +1246,7 @@ notifications, public profiles with a strict privacy allow-list, master data
 (profession/state/city), location-aware availability, a full portfolio/gallery
 with in-site YouTube/Instagram/Vimeo playback, an admin panel with live activity
 logs, and a complete payment system (cash end-to-end; online verified against a
-sandbox provider). **509 automated assertions across 9 suites, all green.**
+sandbox provider). **550 automated assertions across 10 suites, all green.**
 
 **What must not be changed.** The files in §28 — especially the middleware order
 in `app.js`, the privacy allow-list in `publicProfileService.js`, and the

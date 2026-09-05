@@ -4,6 +4,7 @@ import { MailCheck, Loader2, Clock } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import PasswordInput from '../components/ui/PasswordInput';
 import useResendVerification from '../hooks/useResendVerification';
+import { describeApiError } from '../utils/apiError';
 
 /**
  * Inline prompt for a correct password on an unconfirmed account.
@@ -77,12 +78,9 @@ export default function Login() {
         setError('');
       } else {
         setUnverifiedEmail('');
-        const network = !err.response
-          ? err.code === 'ECONNABORTED'
-            ? 'That took too long. Check your connection and try again.'
-            : 'We could not reach the server. Check your connection and try again.'
-          : null;
-        setError(network || data.message || 'Failed to login');
+        // Covers a network drop, a timeout, and a rate limit with its real
+        // countdown - a throttled sign-in now says how long, not "a few minutes".
+        setError(describeApiError(err, 'Failed to login'));
       }
     } finally {
       setLoading(false);
@@ -155,7 +153,7 @@ export default function Login() {
               <label htmlFor="remember-me" className="ml-2 block text-sm text-brand-textSec cursor-pointer">Remember me</label>
             </div>
             <div className="text-sm">
-              <a href="#" className="font-medium text-brand-primary hover:text-brand-primaryDark transition-colors">Forgot password?</a>
+              <Link to="/forgot-password" className="font-medium text-brand-primary hover:text-brand-primaryDark transition-colors">Forgot password?</Link>
             </div>
           </div>
           <div className="pt-2">

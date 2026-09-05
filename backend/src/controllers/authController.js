@@ -5,7 +5,7 @@ import User from '../models/User.js';
 import { logActivity } from '../services/activityService.js';
 import { validatePassword, passwordPolicyError } from '../services/passwordPolicy.js';
 import { validateEmailAddress, normaliseEmail } from '../services/emailValidationService.js';
-import { sendVerificationEmail, appPublicUrl } from '../services/emailService.js';
+import { sendVerificationEmail, sendPasswordResetEmail, appPublicUrl } from '../services/emailService.js';
 
 /* ------------------------------------------------------------------ */
 /* Email verification helpers                                          */
@@ -375,5 +375,173 @@ export const resendVerification = async (req, res) => {
     console.error('resendVerification error:', error);
     // Even an internal failure answers generically.
     res.json(genericResponse);
+  }
+};
+
+
+/* ------------------------------------------------------------------ */
+/* Password reset                                                      */
+/* ------------------------------------------------------------------ */
+
+const RESET_TTL_MS = 60 * 60 * 1000;        // 1 hour
+const RESET_COOLDOWN_MS = 60 * 1000;        // 60 seconds between requests
+
+/**
+ * Issues a reset token, persists its hash + expiry, and emails the link.
+ * Never throws - a mail failure must not turn into a 500 that tells the caller
+ * whether the address existed.
+ */
+const issuePasswordReset = async (user) => {
+  const token = crypto.randomBytes(32).toString('hex');
+
+  await User.updateOne(
+    { _id: user._id },
+    {
+      $set: {
+        password_reset_token_hash: hashToken(token),
+        password_reset_expires: new Date(Date.now() + RESET_TTL_MS),
+        password_reset_sent_at: new Date()
+      }
+    }
+  );
+
+  const resetUrl = `${appPublicUrl()}/reset-password?token=${token}`;
+  return sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl, userId: user._id });
+};
+
+// @desc    Start a password reset
+// @route   POST /api/auth/forgot-password
+// @access  Public
+export const forgotPassword = async (req, res) => {
+  // ONE response for every outcome - unknown address, known address, throttled,
+  // or an internal failure. Anything else turns this endpoint into a way to ask
+  // "does this person have an account here?", which is exactly the question a
+  // password reset form must refuse to answer.
+  const genericResponse = {
+    message: 'If an account exists for that address, a password reset link is on its way.'
+  };
+
+  try {
+    const email = normaliseEmail(req.body?.email);
+    if (!email) return res.json(genericResponse);
+
+    const user = await User.findOne({ email });
+    if (!user) return res.json(genericResponse);
+
+    // Throttle per account, matching resendVerification. Deliberately answered
+    // with the SAME generic body rather than a 429: a distinguishable throttle
+    // response would leak that the address is real.
+    const lastSent = user.password_reset_sent_at?.getTime() || 0;
+    if (Date.now() - lastSent < RESET_COOLDOWN_MS) return res.json(genericResponse);
+
+    await issuePasswordReset(user);
+
+    await logActivity({
+      eventType: 'user.password_reset_requested',
+      category: 'users',
+      title: 'Password reset requested',
+      description: `${user.name} requested a password reset`,
+      actor: { userId: user._id, name: user.name, role: user.role },
+      target: { type: 'user', id: user._id, label: user.name },
+      // No token, no link, no address beyond what the actor/target already
+      // carry - allow-listed keys only.
+      metadata: { account_type: user.role }
+    });
+
+    res.json(genericResponse);
+  } catch (error) {
+    console.error('forgotPassword error:', error);
+    // Even an internal failure answers generically.
+    res.json(genericResponse);
+  }
+};
+
+// @desc    Complete a password reset
+// @route   POST /api/auth/reset-password
+// @access  Public
+export const resetPassword = async (req, res) => {
+  try {
+    const token = String(req.body?.token || '').trim();
+    const password = String(req.body?.password || '');
+
+    if (!token) {
+      return res.status(400).json({ code: 'MISSING_TOKEN', message: 'Reset token is missing.' });
+    }
+
+    // Looked up WITHOUT the expiry filter, so an expired link can be reported
+    // as expired rather than as invalid - the user needs to know to request a
+    // new one rather than think they used the wrong link.
+    const user = await User.findOne({ password_reset_token_hash: hashToken(token) })
+      .select('+password_reset_token_hash +password');
+
+    if (!user) {
+      return res.status(400).json({
+        code: 'INVALID_TOKEN',
+        message: 'This reset link is not valid. It may already have been used.'
+      });
+    }
+
+    if (user.password_reset_expires && user.password_reset_expires.getTime() < Date.now()) {
+      return res.status(400).json({
+        code: 'TOKEN_EXPIRED',
+        message: 'This reset link has expired. Request a new one.',
+        email: user.email
+      });
+    }
+
+    // The same policy the signup form and the change-password endpoint use.
+    // Checked AFTER the token so a stranger holding no token learns nothing.
+    const policy = validatePassword(password);
+    if (!policy.ok) {
+      return res.status(400).json(passwordPolicyError(policy));
+    }
+
+    // Identical hashing to registerUser - this endpoint changes the value, not
+    // the scheme.
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(password, salt);
+
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          password: hashed,
+          // Single-use: cleared as the password changes, so a replay of the
+          // same link finds nothing and reports INVALID_TOKEN.
+          password_reset_token_hash: null,
+          password_reset_expires: null,
+          // A reset proves control of the inbox just as opening a verification
+          // link does - the token only reaches somebody who can read that
+          // mailbox. Leaving email_verified false here would strand a user who
+          // never confirmed their address in a loop: they can reset the
+          // password but still cannot sign in, and the way out is a DIFFERENT
+          // email they have already demonstrated they can receive.
+          email_verified: true
+        }
+      }
+    );
+
+    await logActivity({
+      eventType: 'user.password_reset_completed',
+      category: 'users',
+      severity: 'success',
+      title: 'Password reset completed',
+      description: `${user.name} set a new password via a reset link`,
+      actor: { userId: user._id, name: user.name, role: user.role },
+      target: { type: 'user', id: user._id, label: user.name },
+      metadata: { account_type: user.role }
+    });
+
+    // Deliberately NO token in the response. Verification signs the user in
+    // because opening the link is the whole ceremony; a password reset ends
+    // with the user typing their new password on the sign-in form, which
+    // confirms they know what they just set.
+    res.json({
+      message: 'Password updated. You can now sign in with your new password.',
+      email: user.email
+    });
+  } catch (error) {
+    console.error('resetPassword error:', error);
+    res.status(500).json({ code: 'SERVER_ERROR', message: 'Could not reset this password.' });
   }
 };

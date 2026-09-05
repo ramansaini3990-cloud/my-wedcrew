@@ -4,6 +4,7 @@ import { MailCheck, Loader2, Clock } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import PasswordInput from '../components/ui/PasswordInput';
 import useResendVerification from '../hooks/useResendVerification';
+import { describeApiError } from '../utils/apiError';
 
 /**
  * Shown after a successful signup. The account exists but holds no session
@@ -107,15 +108,10 @@ export default function Register() {
         DOMAIN_CANNOT_RECEIVE_MAIL:
           'That email domain cannot receive mail. Check the part after the @ for a typo.'
       };
-      // No response at all means the request never completed - timeout,
-      // offline, or the API is down. Saying "failed to register" there sends
-      // people hunting for a problem with their details that does not exist.
-      const network = !err.response
-        ? err.code === 'ECONNABORTED'
-          ? 'That took too long. Check your connection and try again.'
-          : 'We could not reach the server. Check your connection and try again.'
-        : null;
-      setError(network || byCode[data.code] || data.message || 'Failed to register');
+      // A code-specific message where we have one; otherwise the shared
+      // describer, which covers timeouts, offline, and a rate limit with the
+      // real number of minutes rather than "a few".
+      setError(byCode[data.code] || describeApiError(err, 'Failed to register'));
     } finally {
       setLoading(false);
     }
