@@ -1,15 +1,14 @@
-import { useContext, useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import api from '../utils/api';
-import { Camera, Calendar, Star, IndianRupee, Bell, Briefcase, Settings, ChevronRight, FileText, MessageSquare, Menu, GalleryVerticalEnd } from 'lucide-react';
+import { Camera, Calendar, Star, IndianRupee, Bell, Briefcase, Settings, ChevronRight, FileText, MessageSquare, GalleryVerticalEnd } from 'lucide-react';
 import { motion } from 'framer-motion';
 import NotificationsView from '../components/NotificationsView';
 import SubscriptionStatusCard from '../components/SubscriptionStatusCard';
-import DashboardSidebar from '../components/dashboard/DashboardSidebar';
+import DashboardShell from '../components/dashboard/DashboardShell';
 import Messages from './Messages';
-import Avatar from '../components/ui/Avatar';
 import useSubscription from '../hooks/useSubscription';
 import ProfileForm from '../components/profile/ProfileForm';
 import ProfileSummaryCard from '../components/dashboard/ProfileSummaryCard';
@@ -20,11 +19,46 @@ import PortfolioManager from '../components/gallery/PortfolioManager';
 import FreelancerEarnings from '../components/payments/FreelancerEarnings';
 import ChangePassword from '../components/settings/ChangePassword';
 
+/**
+ * Tab identity lives in the URL as ?tab=<id>.
+ *
+ * TAB_IDS is the allow-list: anything else in the query string falls back to
+ * DEFAULT_TAB, so a stale bookmark or a typo can never render a blank panel.
+ * Declared at module scope so the array identity is stable across renders.
+ */
+const DEFAULT_TAB = 'overview';
+const TAB_IDS = [
+  'overview', 'portfolio', 'requests', 'applications',
+  'messages', 'calendar', 'earnings', 'notifications', 'settings'
+];
+
 export default function FreelancerDashboard() {
   const { user, logout } = useContext(AuthContext);
   const socket = useSocket();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  // The active tab lives in the URL (?tab=messages) rather than in component
+  // state, so browser Back moves between tabs, a tab can be linked to or
+  // bookmarked, and a refresh stays put. An unknown or missing value falls
+  // back to the default rather than rendering an empty panel.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const activeTab = TAB_IDS.includes(requestedTab) ? requestedTab : DEFAULT_TAB;
+
+  const setActiveTab = useCallback(
+    (id) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('tab', id);
+          return next;
+        },
+        // A push (not a replace) is what gives Back its tab history.
+        { replace: false }
+      );
+    },
+    [setSearchParams]
+  );
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { subscription, loading: subscriptionLoading } = useSubscription();
   const { profile: myProfile, loading: myProfileLoading, refresh: refreshMyProfile } = useMyProfile();
@@ -262,55 +296,63 @@ export default function FreelancerDashboard() {
 
   const pendingRequestsCount = bookingRequests.filter(req => req.status === 'pending').length;
 
-  return (
-    <div className="min-h-screen bg-brand-bg pt-20 flex">
-      <DashboardSidebar
-        profile={{ ...user, ...profileData, ...(myProfile || {}) }}
-        subtitle={[myProfile?.profession || profileData.profession, myProfile?.city]
-          .filter(Boolean)
-          .join(' · ') || 'Freelancer'}
-        fallbackInitial="F"
-        tabs={[
+  const subtitle =
+    [myProfile?.profession || profileData.profession, myProfile?.city].filter(Boolean).join(' · ') ||
+    'Freelancer';
+
+  // Grouped the same way the admin sidebar groups its items, so the two
+  // products read as one. Every tab that existed before is still here, in the
+  // same order within its group - nothing was added or removed.
+  const navGroups = useMemo(
+    () => [
+      {
+        label: 'Main',
+        items: [
           { id: 'overview', label: 'Overview', icon: Camera },
-          { id: 'portfolio', label: 'Portfolio', icon: GalleryVerticalEnd },
+          { id: 'portfolio', label: 'Portfolio', icon: GalleryVerticalEnd }
+        ]
+      },
+      {
+        label: 'Work',
+        items: [
           { id: 'requests', label: 'Booking Requests', icon: Briefcase, badge: pendingRequestsCount },
           { id: 'applications', label: 'My Applications', icon: FileText },
+          { id: 'calendar', label: 'Availability', icon: Calendar }
+        ]
+      },
+      {
+        label: 'Inbox',
+        items: [
           { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessages },
-          { id: 'calendar', label: 'Availability', icon: Calendar },
+          { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadNotifications }
+        ]
+      },
+      {
+        label: 'Account',
+        items: [
           { id: 'earnings', label: 'Earnings', icon: IndianRupee },
-          { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadNotifications },
-          { id: 'settings', label: 'Settings', icon: Settings },
-        ]}
-        activeTab={activeTab}
-        onTabSelect={setActiveTab}
-        onLogout={logout}
-        mobileOpen={sidebarOpen}
-        onCloseMobile={() => setSidebarOpen(false)}
-      />
+          { id: 'settings', label: 'Settings', icon: Settings }
+        ]
+      }
+    ],
+    [pendingRequestsCount, unreadMessages, unreadNotifications]
+  );
 
-      {/* Main Content Area */}
-      <main className="flex-1 min-w-0 bg-brand-bg pb-10">
-        {/* Mobile bar - opens the sidebar */}
-        <div className="lg:hidden sticky top-20 z-20 bg-brand-surface border-b border-brand-border px-3 py-2 flex items-center gap-2.5">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-md text-brand-textSec hover:text-brand-primary hover:bg-brand-primary/5 transition-colors"
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
-          <Avatar user={{ ...user, ...profileData }} size="sm" fallback="F" />
-          <div className="min-w-0 leading-tight">
-            <p className="text-[13px] font-semibold text-brand-navy truncate">
-              {profileData.name || user?.name || 'Freelancer'}
-            </p>
-            <p className="text-[11px] text-brand-textSec truncate">
-              {profileData.profession || 'Freelancer'}
-            </p>
-          </div>
-        </div>
-
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-5 py-5 space-y-5">
+  return (
+    <DashboardShell
+      profile={{ ...user, ...profileData, ...(myProfile || {}) }}
+      subtitle={subtitle}
+      fallbackInitial="F"
+      groups={navGroups}
+      activeTab={activeTab}
+      onTabSelect={setActiveTab}
+      onLogout={logout}
+      sidebarOpen={sidebarOpen}
+      onOpenSidebar={() => setSidebarOpen(true)}
+      onCloseSidebar={() => setSidebarOpen(false)}
+      scrollResetKey={activeTab}
+    >
+      <div className="space-y-5">
           
           {activeTab === 'earnings' && (
             <div className="animate-fade-in">
@@ -319,7 +361,10 @@ export default function FreelancerDashboard() {
           )}
 
           {activeTab === 'messages' && (
-            <div className="animate-fade-in -mx-4 sm:-mx-5 -my-5">
+            /* Cancels the shell's main padding and takes the exact height left
+               under the 56px topbar, so the chat card fills the viewport with
+               no dead space beneath it. */
+            <div className="animate-fade-in -mx-4 -my-4 sm:-mx-5 sm:-my-5 h-[calc(100vh-3.5rem)] [height:calc(100dvh-3.5rem)]">
               <Messages embedded />
             </div>
           )}
@@ -695,8 +740,7 @@ export default function FreelancerDashboard() {
             </div>
           )}
 
-        </div>
-      </main>
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

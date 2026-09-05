@@ -272,7 +272,11 @@ const Messages = ({ embedded = false }) => {
     <div
       className={
         embedded
-          ? 'w-full h-[calc(100vh-9rem)] min-h-[24rem] flex'
+          // Fills whatever height the dashboard hands it. This used to be a
+          // hardcoded calc(100vh - 9rem), which assumed the public navbar that
+          // sat above the dashboard; the arithmetic left ~54px of dead space
+          // below the card once that navbar was gone.
+          ? 'w-full h-full min-h-[24rem] flex'
           : 'bg-brand-bg pt-[90px] pb-6 px-4 flex justify-center items-start h-screen'
       }
     >
@@ -283,8 +287,13 @@ const Messages = ({ embedded = false }) => {
       >
         {/* Conversation list */}
         <div
-          className={`w-full md:w-[290px] md:flex-shrink-0 border-r border-brand-border bg-white flex-col ${
-            mobileView === 'list' ? 'flex' : 'hidden md:flex'
+          // Two columns only from `lg` up. At the old `md` breakpoint a 768px
+          // tablet had to fit a 290px list beside a ~476px chat pane, which
+          // left both unusable; below `lg` the list and the chat are now shown
+          // one at a time, with the existing back button moving between them.
+          // The list also widens on larger screens instead of staying at 290px.
+          className={`w-full lg:w-[320px] xl:w-[360px] lg:flex-shrink-0 border-r border-brand-border bg-white flex-col ${
+            mobileView === 'list' ? 'flex' : 'hidden lg:flex'
           }`}
         >
           <div className="h-[52px] px-3.5 flex items-center border-b border-brand-border bg-brand-surface shrink-0">
@@ -353,7 +362,7 @@ const Messages = ({ embedded = false }) => {
         {/* Chat Area */}
         <div
           className={`flex-1 flex-col bg-brand-bg relative min-w-0 ${
-            mobileView === 'chat' ? 'flex' : 'hidden md:flex'
+            mobileView === 'chat' ? 'flex' : 'hidden lg:flex'
           }`}
         >
           {isLocked ? (
@@ -388,7 +397,7 @@ const Messages = ({ embedded = false }) => {
               <div className="h-[52px] px-3 sm:px-4 border-b border-brand-border bg-white flex items-center gap-2 shadow-sm z-10 flex-shrink-0">
                 <button
                   onClick={() => setMobileView('list')}
-                  className="md:hidden p-1.5 -ml-1 rounded-md text-brand-textSec hover:text-brand-primary hover:bg-brand-primary/5 transition-colors shrink-0"
+                  className="lg:hidden p-1.5 -ml-1 rounded-md text-brand-textSec hover:text-brand-primary hover:bg-brand-primary/5 transition-colors shrink-0"
                   aria-label="Back to conversations"
                 >
                   <ArrowLeft size={18} />

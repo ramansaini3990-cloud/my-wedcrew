@@ -62,7 +62,9 @@ const NewRequirement = () => {
     try {
       const dataToSubmit = { ...formData, status };
       await api.post('/api/requirements', dataToSubmit);
-      navigate('/company/dashboard');
+      // Straight back to the list this requirement was just added to, rather
+      // than the overview tab.
+      navigate('/company/dashboard?tab=requirements');
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong');
       setLoading(false);
@@ -72,8 +74,11 @@ const NewRequirement = () => {
   return (
     <div className="min-h-screen bg-brand-bg pt-24 pb-16 px-4">
       <div className="max-w-7xl mx-auto">
-        <Link to="/company/dashboard" className="inline-flex items-center gap-2 text-brand-textSec hover:text-brand-primary transition-colors mb-6 text-sm font-medium">
-          <ArrowLeft size={16} /> Back to Dashboard
+        {/* Returns to the tab this page was reached from, not the default
+           overview tab. Now that tabs are addressable this is a real link, so
+           it no longer depends on browser Back. */}
+        <Link to="/company/dashboard?tab=requirements" className="inline-flex items-center gap-2 text-brand-textSec hover:text-brand-primary transition-colors mb-6 text-sm font-medium">
+          <ArrowLeft size={16} /> Back to Requirements
         </Link>
         
         <div className="bg-white rounded-2xl shadow-sm border border-brand-border overflow-hidden">

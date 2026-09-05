@@ -1,15 +1,14 @@
-import { useContext, useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { PlusCircle, Search, ListTodo, Star, Building2, Bell, Settings, ChevronRight, Crown, MessageSquare, Menu, Wallet } from 'lucide-react';
+import { PlusCircle, Search, ListTodo, Star, Building2, Bell, Settings, ChevronRight, Crown, MessageSquare, Wallet } from 'lucide-react';
 import { motion } from 'framer-motion';
 import NotificationsView from '../components/NotificationsView';
 import SubscriptionStatusCard from '../components/SubscriptionStatusCard';
-import DashboardSidebar from '../components/dashboard/DashboardSidebar';
+import DashboardShell from '../components/dashboard/DashboardShell';
 import Messages from './Messages';
-import Avatar from '../components/ui/Avatar';
 import useSubscription from '../hooks/useSubscription';
 import useUnreadMessages from '../hooks/useUnreadMessages';
 import CompanyPayments from '../components/payments/CompanyPayments';
@@ -19,11 +18,45 @@ import ProfileSummaryCard from '../components/dashboard/ProfileSummaryCard';
 import useMyProfile from '../hooks/useMyProfile';
 import ChangePassword from '../components/settings/ChangePassword';
 
+/**
+ * Tab identity lives in the URL as ?tab=<id>.
+ *
+ * TAB_IDS is the allow-list: anything else in the query string falls back to
+ * DEFAULT_TAB, so a stale bookmark or a typo can never render a blank panel.
+ * Declared at module scope so the array identity is stable across renders.
+ */
+const DEFAULT_TAB = 'overview';
+const TAB_IDS = [
+  'overview', 'requirements', 'messages', 'payments',
+  'search', 'favorites', 'notifications', 'settings'
+];
+
 export default function CompanyDashboard() {
   const { user, logout } = useContext(AuthContext);
   const socket = useSocket();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  // The active tab lives in the URL (?tab=messages) rather than in component
+  // state, so browser Back moves between tabs, a tab can be linked to or
+  // bookmarked, and a refresh stays put. An unknown or missing value falls
+  // back to the default rather than rendering an empty panel.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const activeTab = TAB_IDS.includes(requestedTab) ? requestedTab : DEFAULT_TAB;
+
+  const setActiveTab = useCallback(
+    (id) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('tab', id);
+          return next;
+        },
+        // A push (not a replace) is what gives Back its tab history.
+        { replace: false }
+      );
+    },
+    [setSearchParams]
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { subscription, loading: subscriptionLoading } = useSubscription();
   const { profile: myProfile, loading: myProfileLoading } = useMyProfile();
@@ -155,61 +188,68 @@ export default function CompanyDashboard() {
     { label: 'Active Requirements', value: activeCount.toString(), icon: ListTodo, trend: 'Currently published' },
   ];
 
-  return (
-    <div className="min-h-screen bg-brand-bg pt-20 flex">
-      <DashboardSidebar
-        profile={{ ...user, ...(myProfile || {}) }}
-        subtitle={[myProfile?.profession || 'Production House', myProfile?.city]
-          .filter(Boolean)
-          .join(' · ')}
-        fallbackInitial="C"
-        topAction={
-          <Link
-            to="/company/requirements/new"
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-colors font-medium text-[13px] shadow-sm"
-          >
-            <PlusCircle size={15} />
-            Post Requirement
-          </Link>
-        }
-        tabs={[
-          { id: 'overview', label: 'Studio Overview', icon: Building2 },
+  const subtitle =
+    [myProfile?.profession || 'Production House', myProfile?.city].filter(Boolean).join(' · ');
+
+  // Grouped the same way the admin sidebar groups its items, so the two
+  // products read as one. Every tab that existed before is still here, in the
+  // same order within its group - nothing was added or removed.
+  const navGroups = useMemo(
+    () => [
+      {
+        label: 'Main',
+        items: [{ id: 'overview', label: 'Studio Overview', icon: Building2 }]
+      },
+      {
+        label: 'Hiring',
+        items: [
           { id: 'requirements', label: 'Manage Requirements', icon: ListTodo },
-          { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessages },
-          { id: 'payments', label: 'Payments', icon: Wallet },
           { id: 'search', label: 'Find Crew', icon: Search },
-          { id: 'favorites', label: 'Saved Professionals', icon: Star },
-          { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadNotifications },
-          { id: 'settings', label: 'Company Settings', icon: Settings },
-        ]}
-        activeTab={activeTab}
-        onTabSelect={setActiveTab}
-        onLogout={logout}
-        mobileOpen={sidebarOpen}
-        onCloseMobile={() => setSidebarOpen(false)}
-      />
+          { id: 'favorites', label: 'Saved Professionals', icon: Star }
+        ]
+      },
+      {
+        label: 'Inbox',
+        items: [
+          { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessages },
+          { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadNotifications }
+        ]
+      },
+      {
+        label: 'Account',
+        items: [
+          { id: 'payments', label: 'Payments', icon: Wallet },
+          { id: 'settings', label: 'Company Settings', icon: Settings }
+        ]
+      }
+    ],
+    [unreadMessages, unreadNotifications]
+  );
 
-      {/* Main Content Area */}
-      <main className="flex-1 min-w-0 bg-brand-bg pb-10">
-        {/* Mobile bar - opens the sidebar */}
-        <div className="lg:hidden sticky top-20 z-20 bg-brand-surface border-b border-brand-border px-3 py-2 flex items-center gap-2.5">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-md text-brand-textSec hover:text-brand-primary hover:bg-brand-primary/5 transition-colors"
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
-          <Avatar user={user} size="sm" fallback="C" />
-          <div className="min-w-0 leading-tight">
-            <p className="text-[13px] font-semibold text-brand-navy truncate">
-              {user?.name || 'Company Studio'}
-            </p>
-            <p className="text-[11px] text-brand-textSec truncate">Production House</p>
-          </div>
-        </div>
-
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-5 py-5 space-y-5">
+  return (
+    <DashboardShell
+      profile={{ ...user, ...(myProfile || {}) }}
+      subtitle={subtitle}
+      fallbackInitial="C"
+      topAction={
+        <Link
+          to="/company/requirements/new"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-colors font-medium text-[13px] shadow-sm"
+        >
+          <PlusCircle size={15} />
+          Post Requirement
+        </Link>
+      }
+      groups={navGroups}
+      activeTab={activeTab}
+      onTabSelect={setActiveTab}
+      onLogout={logout}
+      sidebarOpen={sidebarOpen}
+      onOpenSidebar={() => setSidebarOpen(true)}
+      onCloseSidebar={() => setSidebarOpen(false)}
+      scrollResetKey={activeTab}
+    >
+      <div className="space-y-5">
           
           {activeTab === 'payments' && (
           
@@ -223,7 +263,10 @@ export default function CompanyDashboard() {
 
           
           {activeTab === 'messages' && (
-            <div className="animate-fade-in -mx-4 sm:-mx-5 -my-5">
+            /* Cancels the shell's main padding and takes the exact height left
+               under the 56px topbar, so the chat card fills the viewport with
+               no dead space beneath it. */
+            <div className="animate-fade-in -mx-4 -my-4 sm:-mx-5 sm:-my-5 h-[calc(100vh-3.5rem)] [height:calc(100dvh-3.5rem)]">
               <Messages embedded />
             </div>
           )}
@@ -591,8 +634,7 @@ export default function CompanyDashboard() {
             </div>
           )}
 
-        </div>
-      </main>
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

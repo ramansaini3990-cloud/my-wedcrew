@@ -70,22 +70,6 @@ function App() {
                 } 
               />
               <Route 
-                path="freelancer/dashboard" 
-                element={
-                  <ProtectedRoute allowedRoles={['freelancer']}>
-                    <FreelancerDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="company/dashboard" 
-                element={
-                  <ProtectedRoute allowedRoles={['company']}>
-                    <CompanyDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
                 path="company/requirements/new" 
                 element={
                   <ProtectedRoute allowedRoles={['company']}>
@@ -94,6 +78,30 @@ function App() {
                 } 
               />
             </Route>
+
+            {/* Dashboard shells.
+                Deliberately OUTSIDE the public layout above: rendering them
+                inside it put the public Navbar (with its own logout and a
+                "Dashboard" link) on top of the dashboard sidebar. Each
+                dashboard now renders its own DashboardShell, the same way
+                /admin renders AdminLayout. The paths are unchanged, so every
+                existing link still works. */}
+            <Route
+              path="/freelancer/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['freelancer']}>
+                  <FreelancerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/company/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['company']}>
+                  <CompanyDashboard />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Admin Layout */}
             <Route 
