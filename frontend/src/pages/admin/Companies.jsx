@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../utils/api';
-import { MailCheck, MoreVertical, Search, Filter, Briefcase } from 'lucide-react';
+import { MailCheck, Search, Briefcase } from 'lucide-react';
 
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
@@ -61,10 +61,8 @@ const Companies = () => {
               className="w-full sm:w-56 pl-8 pr-3 h-9 bg-brand-bg border border-brand-border rounded-lg text-[13px] text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary/25 focus:border-brand-primary"
             />
           </div>
-          <button className="flex items-center gap-2 px-3 h-9 border border-brand-border rounded-lg text-[13px] font-medium text-brand-navy hover:text-brand-primary hover:border-brand-primary/40 hover:bg-brand-primary/5 transition-colors">
-            <Filter size={16} />
-            <span className="hidden sm:inline">Filter</span>
-          </button>
+          {/* A "Filter" button sat here with no handler - it opened nothing.
+             The search box beside it is the working filter. */}
         </div>
       </div>
 
@@ -135,9 +133,7 @@ const Companies = () => {
                           {verifying === (c.id || c._id) ? 'Verifying…' : 'Verify'}
                         </button>
                       )}
-                      <button className="text-brand-textSec hover:text-brand-primary p-2 rounded-lg hover:bg-brand-primary/10 transition-colors">
-                        <MoreVertical size={18} />
-                      </button>
+                      {/* A kebab menu with no handler and no menu behind it. */}
                     </td>
                   </tr>
                 ))

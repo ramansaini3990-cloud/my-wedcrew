@@ -2,6 +2,7 @@ import { Menu, Search, Bell } from 'lucide-react';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import useUnreadNotifications from '../../hooks/useUnreadNotifications';
 
 /**
  * Which deployment is this panel pointed at?
@@ -46,6 +47,7 @@ const EnvironmentBadge = () => {
 const Topbar = ({ sidebarOpen, setSidebarOpen }) => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const { count: unreadNotifications } = useUnreadNotifications();
 
   const handleLogout = () => {
     logout();
@@ -81,11 +83,25 @@ const Topbar = ({ sidebarOpen, setSidebarOpen }) => {
       {/* Right side */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <button
+          onClick={() => navigate('/admin/notifications')}
           className="relative p-2 text-brand-textSec hover:text-brand-primary hover:bg-brand-primary/5 rounded-lg transition-colors"
           aria-label="Notifications"
         >
           <Bell size={18} />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-brand-primary rounded-full ring-2 ring-brand-surface"></span>
+          {/* Was rendered unconditionally, so it always claimed something was
+              new. Now shown only when there really is an unread notification
+              for this admin. */}
+          {unreadNotifications > 0 && (
+            <span
+              className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-brand-primary rounded-full ring-2 ring-brand-surface"
+              aria-hidden="true"
+            />
+          )}
+          <span className="sr-only">
+            {unreadNotifications > 0
+              ? `${unreadNotifications} unread notification${unreadNotifications === 1 ? '' : 's'}`
+              : 'No unread notifications'}
+          </span>
         </button>
 
         <div className="h-6 w-px bg-brand-border hidden sm:block"></div>

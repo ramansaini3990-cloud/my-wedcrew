@@ -1,5 +1,7 @@
 import User from '../models/User.js';
 import Availability from '../models/Availability.js';
+import { getFreelancerBalance } from '../services/ledgerService.js';
+import { formatPaise } from '../services/money.js';
 import BookingRequest from '../models/BookingRequest.js';
 import Requirement from '../models/Requirement.js';
 
@@ -95,14 +97,22 @@ export const getDashboardStats = async (req, res) => {
       event_date: { $gte: today }
     });
 
+    // Real money, from the append-only ledger - the same figure the Earnings
+    // tab shows. It used to be the literal string '₹0', which read as a
+    // measured balance of zero rather than "not wired up".
+    const balance = await getFreelancerBalance(userId);
+
     res.json({
       stats: {
-        profileViews: 0,
+        // `profileViews` was removed rather than left at 0: nothing in the
+        // system records a profile view, so any number here - including zero -
+        // claims a measurement that is not taken.
         bookingRequests: bookingRequestsCount,
         upcomingShoots: upcomingShootsCount,
-        earnings: '₹0'
-      },
-      recentRequests: []
+        earnings: formatPaise(balance.total_earned)
+      }
+      // `recentRequests: []` was dropped too: it was always empty and no part
+      // of the UI ever read it.
     });
   } catch (error) {
     console.error('Get stats error:', error);

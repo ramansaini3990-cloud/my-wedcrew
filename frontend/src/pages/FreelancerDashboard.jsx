@@ -3,7 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import api from '../utils/api';
-import { Camera, Calendar, Star, IndianRupee, Bell, Briefcase, Settings, ChevronRight, FileText, MessageSquare, GalleryVerticalEnd } from 'lucide-react';
+import { Camera, Calendar, IndianRupee, Bell, Briefcase, Settings, ChevronRight, FileText, MessageSquare, GalleryVerticalEnd } from 'lucide-react';
 import { motion } from 'framer-motion';
 import NotificationsView from '../components/NotificationsView';
 import SubscriptionStatusCard from '../components/SubscriptionStatusCard';
@@ -288,10 +288,13 @@ export default function FreelancerDashboard() {
   };
 
   const stats = [
-    { label: 'Profile Views', value: dashboardData?.stats?.profileViews || 0, icon: Star, trend: '' },
+    // "Profile Views" was removed: nothing records a view, so the 0 it always
+    // showed was a measurement the platform does not take. Earnings now comes
+    // from the ledger rather than a hardcoded '₹0', and is labelled for what it
+    // actually is - everything earned to date, not this month.
     { label: 'Booking Requests', value: dashboardData?.stats?.bookingRequests || 0, icon: Briefcase, trend: '' },
     { label: 'Upcoming Shoots', value: dashboardData?.stats?.upcomingShoots || 0, icon: Camera, trend: '' },
-    { label: 'Earnings (Month)', value: dashboardData?.stats?.earnings || '₹0', icon: IndianRupee, trend: '' },
+    { label: 'Total Earned', value: dashboardData?.stats?.earnings || '₹0', icon: IndianRupee, trend: '' },
   ];
 
   const pendingRequestsCount = bookingRequests.filter(req => req.status === 'pending').length;

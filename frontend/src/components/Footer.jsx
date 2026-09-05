@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Crown, Globe, MessageCircle, AtSign, Mail, MapPin, Phone } from 'lucide-react';
+import { Crown, Mail, MapPin, Phone } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -19,15 +19,10 @@ export default function Footer() {
               India's premier network for luxury wedding professionals. Connecting elite cinematographers, photographers, and event crew with premium production houses.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/70 hover:bg-brand-primary hover:text-white transition-colors border border-white/10">
-                <Globe size={18} />
-              </a>
-              <a href="#" className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/70 hover:bg-brand-primary hover:text-white transition-colors border border-white/10">
-                <MessageCircle size={18} />
-              </a>
-              <a href="#" className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/70 hover:bg-brand-primary hover:text-white transition-colors border border-white/10">
-                <AtSign size={18} />
-              </a>
+              {/* Three social icons linked to href="#" - they went nowhere and
+                 no accounts are configured. Restore them when there are real
+                 profile URLs to point at. The concierge address below is a
+                 working contact route in the meantime. */}
             </div>
           </div>
 
