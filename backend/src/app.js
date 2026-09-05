@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import mongoose from 'mongoose';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import requirementRoutes from './routes/requirementRoutes.js';
@@ -23,8 +25,43 @@ import adminFinanceRoutes from './routes/adminFinanceRoutes.js';
 import { handleWebhook } from './controllers/webhookController.js';
 import { UPLOAD_ROOT_DIR, ensureStorage } from './services/uploadService.js';
 import { corsOptions, corsErrorHandler } from './config/cors.js';
+import { apiLimiter } from './middleware/rateLimiters.js';
 
 const app = express();
+
+/**
+ * Behind Render (and any reverse proxy) the client IP arrives in
+ * X-Forwarded-For. Without this, express-rate-limit sees every request as
+ * coming from the proxy's single IP and would lock out ALL users at once the
+ * moment one of them hit a limit.
+ */
+app.set('trust proxy', 1);
+
+/**
+ * Security headers. First middleware, so every response carries them -
+ * including the webhook and error responses.
+ *
+ * Two deliberate deviations from helmet's defaults:
+ *
+ *   crossOriginResourcePolicy: 'cross-origin'
+ *     Helmet defaults to 'same-origin', which would BLOCK the frontend from
+ *     loading gallery images and video from this API's /uploads path, since
+ *     the two run on different origins in production.
+ *
+ *   crossOriginEmbedderPolicy: false (helmet 8's own default, pinned here)
+ *     Enabling COEP would require every cross-origin sub-resource to opt in
+ *     and would break media loading.
+ *
+ * Helmet's default CSP is kept. It is inert for JSON responses, and the
+ * /uploads handler below overrides it with a much stricter
+ * "default-src 'none'; sandbox" for stored media.
+ */
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginEmbedderPolicy: false
+  })
+);
 
 // Middleware
 app.use(cors(corsOptions));
@@ -40,6 +77,13 @@ app.use(cors(corsOptions));
 app.post('/api/payments/webhook', express.raw({ type: '*/*', limit: '1mb' }), handleWebhook);
 
 app.use(express.json());
+
+/**
+ * Broad API backstop. Mounted AFTER the webhook route above, so a provider
+ * retry burst never reaches a limiter — see rateLimiters.js, which also skips
+ * the webhook path defensively in case this ordering ever changes.
+ */
+app.use('/api', apiLimiter);
 
 /**
  * Uploaded portfolio media.
@@ -99,9 +143,30 @@ app.get('/', (req, res) => {
   res.send('mywedcrew.com API is running');
 });
 
-// Health check route
+/**
+ * Health check.
+ *
+ * Reports the real Mongoose connection state so a load balancer stops routing
+ * traffic to an instance that cannot reach the database. Previously this
+ * always returned 200, which made a database outage invisible to Render.
+ *
+ * The original `status` and `time` fields are unchanged for backward
+ * compatibility - the E2E suites gate on `status === 'ok'`.
+ */
+const MONGOOSE_STATES = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date() });
+  const state = mongoose.connection.readyState;
+  const connected = state === 1;
+
+  res.status(connected ? 200 : 503).json({
+    status: connected ? 'ok' : 'degraded',
+    time: new Date(),
+    database: {
+      connected,
+      state: MONGOOSE_STATES[state] ?? `unknown(${state})`
+    }
+  });
 });
 
 // Maps a rejected CORS origin to a clean 403 instead of a 500 stack trace.

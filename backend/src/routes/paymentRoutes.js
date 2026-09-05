@@ -1,5 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
+import { paymentLimiter } from '../middleware/rateLimiters.js';
 import {
   getPaymentConfig, createPayment, verifyPayment, listPayments, getPayment,
   confirmCash, disputeCash, requestRefund
@@ -19,11 +20,11 @@ router.use(protect);
 
 router.get('/config', getPaymentConfig);
 router.get('/', listPayments);
-router.post('/', createPayment);
+router.post('/', paymentLimiter, createPayment);
 router.get('/:id', getPayment);
-router.post('/:id/verify', verifyPayment);
+router.post('/:id/verify', paymentLimiter, verifyPayment);
 router.post('/:id/cash-confirm', confirmCash);
 router.post('/:id/cash-dispute', disputeCash);
-router.post('/:id/refund', requestRefund);
+router.post('/:id/refund', paymentLimiter, requestRefund);
 
 export default router;

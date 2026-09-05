@@ -5,11 +5,14 @@ import { logActivity } from '../services/activityService.js';
 import { validatePassword, passwordPolicyError } from '../services/passwordPolicy.js';
 
 // Generate JWT Token
+// Expiry was already bounded at 7d; it is now configurable via JWT_EXPIRES_IN
+// so it can be shortened in production without a code change. The default is
+// unchanged, so existing behaviour is identical when the var is unset.
 const generateToken = (user) => {
   return jwt.sign(
     { id: user.id, role: user.role, name: user.name, email: user.email },
     process.env.JWT_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 };
 

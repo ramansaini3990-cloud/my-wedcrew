@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { PlusCircle, Users, Search, ListTodo, Star, Building2, Bell, Settings, ChevronRight, Crown, MessageSquare, Menu, Wallet } from 'lucide-react';
+import { PlusCircle, Search, ListTodo, Star, Building2, Bell, Settings, ChevronRight, Crown, MessageSquare, Menu, Wallet } from 'lucide-react';
 import { motion } from 'framer-motion';
 import NotificationsView from '../components/NotificationsView';
 import SubscriptionStatusCard from '../components/SubscriptionStatusCard';
@@ -13,6 +13,7 @@ import Avatar from '../components/ui/Avatar';
 import useSubscription from '../hooks/useSubscription';
 import useUnreadMessages from '../hooks/useUnreadMessages';
 import CompanyPayments from '../components/payments/CompanyPayments';
+import UnderConstruction from '../components/ui/UnderConstruction';
 import ProfileForm from '../components/profile/ProfileForm';
 import ProfileSummaryCard from '../components/dashboard/ProfileSummaryCard';
 import useMyProfile from '../hooks/useMyProfile';
@@ -145,11 +146,12 @@ export default function CompanyDashboard() {
 
   const activeCount = myRequirements.filter(r => r.status === 'published').length;
 
+  // Only genuinely-derived figures belong here. "Total Hires", "Favorite Crew"
+  // and "Avg Rating Given" were hardcoded demo values (42 / 18 / 4.9) shown to
+  // real users; they were removed rather than zeroed, because a wrong number is
+  // worse than no number. Re-add them once each has a real backing query.
   const stats = [
     { label: 'Active Requirements', value: activeCount.toString(), icon: ListTodo, trend: 'Currently published' },
-    { label: 'Total Hires', value: '42', icon: Users, trend: 'Top 10% studio' },
-    { label: 'Favorite Crew', value: '18', icon: Star, trend: 'Saved profiles' },
-    { label: 'Avg Rating Given', value: '4.9', icon: Star, trend: 'Highly rated' },
   ];
 
   return (
@@ -272,7 +274,7 @@ export default function CompanyDashboard() {
               <SubscriptionStatusCard subscription={subscription} loading={subscriptionLoading} />
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {stats.map((stat, i) => (
                   <div key={i} className="bg-brand-surface p-6 rounded-xl border border-brand-border shadow-sm hover:border-brand-primary/30 transition-all group">
                     <div className="flex justify-between items-start mb-4">
@@ -564,13 +566,23 @@ export default function CompanyDashboard() {
             </div>
           )}
 
-          {['search', 'favorites'].includes(activeTab) && (
-            <div className="animate-fade-in flex flex-col items-center justify-center p-10 bg-brand-surface rounded-xl border border-brand-border">
-              <div className="h-11 w-11 bg-brand-primary/10 text-brand-primary rounded-xl flex items-center justify-center mb-3">
-                <Settings size={20} />
-              </div>
-              <h2 className="text-sm font-semibold text-brand-navy capitalize">{activeTab}</h2>
-              <p className="text-[13px] text-brand-textSec text-center max-w-md mt-1">This module is currently being updated to match the new premium experience. Check back soon.</p>
+          {activeTab === 'search' && (
+            <div className="animate-fade-in">
+              <UnderConstruction
+                title="Find Crew"
+                description="Search professionals by craft, city and date from inside your dashboard, with availability and travel plans factored in."
+                backTo={{ to: '/freelancers', label: 'Browse professionals meanwhile' }}
+              />
+            </div>
+          )}
+
+          {activeTab === 'favorites' && (
+            <div className="animate-fade-in">
+              <UnderConstruction
+                title="Saved Professionals"
+                description="Shortlist professionals you want to work with again and reach them without searching from scratch each time."
+                backTo={{ to: '/freelancers', label: 'Browse professionals meanwhile' }}
+              />
             </div>
           )}
 

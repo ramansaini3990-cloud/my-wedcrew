@@ -1,5 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
+import { paymentLimiter } from '../middleware/rateLimiters.js';
 import {
   getEarnings, getLedger, getPayoutAccount, savePayoutAccount,
   listWithdrawals, createWithdrawal, getWithdrawal
@@ -24,7 +25,7 @@ payoutAccountRouter.post('/', savePayoutAccount);
 export const withdrawalRouter = express.Router();
 withdrawalRouter.use(protect);
 withdrawalRouter.get('/', listWithdrawals);
-withdrawalRouter.post('/', createWithdrawal);
+withdrawalRouter.post('/', paymentLimiter, createWithdrawal);
 withdrawalRouter.get('/:id', getWithdrawal);
 
 export default router;
