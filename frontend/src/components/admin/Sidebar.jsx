@@ -70,7 +70,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-14 px-4 border-b border-brand-border shrink-0">
-          <span className="font-serif text-base font-bold tracking-wide text-brand-navy whitespace-nowrap">
+          <span className="admin-wordmark font-serif text-base font-bold tracking-wide text-brand-navy whitespace-nowrap">
             mywed<span className="text-brand-primary">crew</span><span className="text-brand-navy/55">.com</span>
           </span>
           <button

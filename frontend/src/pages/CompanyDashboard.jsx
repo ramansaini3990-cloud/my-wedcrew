@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { PlusCircle, Search, ListTodo, Star, Building2, Bell, Settings, ChevronRight, Crown, MessageSquare, Wallet } from 'lucide-react';
+import { PlusCircle, Search, ListTodo, Star, Building2, Bell, Settings, ChevronRight, Crown, MessageSquare, Wallet, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 import NotificationsView from '../components/NotificationsView';
 import SubscriptionStatusCard from '../components/SubscriptionStatusCard';
@@ -12,7 +12,9 @@ import Messages from './Messages';
 import useSubscription from '../hooks/useSubscription';
 import useUnreadMessages from '../hooks/useUnreadMessages';
 import CompanyPayments from '../components/payments/CompanyPayments';
-import UnderConstruction from '../components/ui/UnderConstruction';
+import FindCrew from '../components/dashboard/FindCrew';
+import SavedProfessionals from '../components/dashboard/SavedProfessionals';
+import useSavedProfessionals from '../hooks/useSavedProfessionals';
 import ProfileForm from '../components/profile/ProfileForm';
 import ProfileSummaryCard from '../components/dashboard/ProfileSummaryCard';
 import useMyProfile from '../hooks/useMyProfile';
@@ -58,6 +60,10 @@ export default function CompanyDashboard() {
     [setSearchParams]
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Owned here, not inside either tab, so Find Crew and Saved Professionals
+  // share one saved-set and cannot disagree about what is bookmarked.
+  const savedProfessionals = useSavedProfessionals(true);
   const { subscription, loading: subscriptionLoading } = useSubscription();
   const { profile: myProfile, loading: myProfileLoading } = useMyProfile();
   const [myRequirements, setMyRequirements] = useState([]);
@@ -385,9 +391,16 @@ export default function CompanyDashboard() {
                       Need to hire 10+ crew members for a mega production? Get dedicated account management and bulk hiring discounts.
                     </p>
                   </div>
-                  <button className="px-6 py-3 bg-brand-primary text-white font-medium rounded-lg hover:bg-brand-primaryLight transition-all shadow-sm shrink-0 whitespace-nowrap">
-                    Contact Enterprise
-                  </button>
+                  {/* Was a button with no handler that did nothing when
+                      clicked. Wired to the concierge address the Footer already
+                      publishes, rather than removed: the enterprise offer is
+                      real, only the route to it was missing. */}
+                  <a
+                    href="mailto:concierge@wedcrew.in?subject=Studio%20Enterprise%20enquiry&body=Hi%20—%20I%27d%20like%20to%20talk%20about%20bulk%20hiring%20and%20dedicated%20account%20management%20for%20my%20production%20house."
+                    className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-brand-primary px-6 py-3 font-medium text-white shadow-sm transition-all hover:bg-brand-primaryLight"
+                  >
+                    <Mail size={15} aria-hidden="true" /> Contact Enterprise
+                  </a>
                 </div>
               </div>
             </div>
@@ -614,25 +627,9 @@ export default function CompanyDashboard() {
             </div>
           )}
 
-          {activeTab === 'search' && (
-            <div className="animate-fade-in">
-              <UnderConstruction
-                title="Find Crew"
-                description="Search professionals by craft, city and date from inside your dashboard, with availability and travel plans factored in."
-                backTo={{ to: '/freelancers', label: 'Browse professionals meanwhile' }}
-              />
-            </div>
-          )}
+          {activeTab === 'search' && <FindCrew saved={savedProfessionals} />}
 
-          {activeTab === 'favorites' && (
-            <div className="animate-fade-in">
-              <UnderConstruction
-                title="Saved Professionals"
-                description="Shortlist professionals you want to work with again and reach them without searching from scratch each time."
-                backTo={{ to: '/freelancers', label: 'Browse professionals meanwhile' }}
-              />
-            </div>
-          )}
+          {activeTab === 'favorites' && <SavedProfessionals saved={savedProfessionals} />}
 
       </div>
     </DashboardShell>

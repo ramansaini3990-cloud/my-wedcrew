@@ -128,6 +128,11 @@
   --admin-amber: #92400E;           /* pending / dispute */
   --admin-danger: #B42318;          /* failed / suspended */
 
+  /* The brand mark keeps the real brand orange. It is identity, not UI
+     chrome, so it is exempt from the accent remap below. Mirrors
+     brand.primary in tailwind.config.js, which this file must not change. */
+  --admin-brand-orange: #DE601E;
+
   /* RESERVED. Orange is no longer decoration in admin - it is a signal.
      Used only by .admin-warning and .admin-destructive below, so when an
      operator sees orange in the finance or moderation panels it means
@@ -202,6 +207,9 @@
 .admin-shell .text-brand-textSec\/40 { color: rgb(var(--admin-text-sec-rgb) / 0.4); }
 .admin-shell .text-brand-muted { color: var(--admin-muted); }
 .admin-shell .text-brand-primary { color: var(--admin-accent); }
+/* Exemption: the wordmark's accent letters stay brand orange. Specificity
+   (0,3,0) beats the (0,2,0) remap immediately above. */
+.admin-shell .admin-wordmark .text-brand-primary { color: var(--admin-brand-orange); }
 .admin-shell .text-brand-success { color: var(--admin-success); }
 .admin-shell .text-brand-danger { color: var(--admin-danger); }
 .admin-shell .text-brand-border { color: var(--admin-border); }

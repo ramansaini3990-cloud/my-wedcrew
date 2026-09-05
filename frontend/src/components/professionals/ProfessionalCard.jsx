@@ -17,7 +17,7 @@ const formatRange = (start, end) => {
  * rather than filled with a placeholder. No fabricated ratings, experience,
  * verification or availability.
  */
-export default function ProfessionalCard({ professional, actions = null }) {
+export default function ProfessionalCard({ professional, actions = null, lockedActions = null }) {
   const p = professional || {};
   const id = p.id || p._id;
 
@@ -131,6 +131,10 @@ export default function ProfessionalCard({ professional, actions = null }) {
             >
               View Subscription Plans <ArrowRight size={14} aria-hidden="true" />
             </Link>
+            {/* Actions that are safe without an unlocked identity - saving a
+                bookmark, for instance. Opt-in, so callers that pass nothing
+                (the public browse page) are unaffected. */}
+            {lockedActions}
           </>
         ) : (
           <>

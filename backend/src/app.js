@@ -19,6 +19,7 @@ import profileRoutes from './routes/profileRoutes.js';
 import availabilityRoutes from './routes/availabilityRoutes.js';
 import activityLogRoutes from './routes/activityLogRoutes.js';
 import galleryRoutes from './routes/galleryRoutes.js';
+import savedProfessionalRoutes from './routes/savedProfessionalRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import earningsRoutes, { payoutAccountRouter, withdrawalRouter } from './routes/earningsRoutes.js';
 import adminFinanceRoutes from './routes/adminFinanceRoutes.js';
@@ -132,6 +133,7 @@ app.use('/api/profile', profileRoutes);            // freelancer + company profi
 app.use('/api/availability', availabilityRoutes);  // travel & availability blocks
 app.use('/api/admin/activity-logs', activityLogRoutes); // admin-only activity stream
 app.use('/api/gallery', galleryRoutes);            // freelancer portfolio gallery
+app.use('/api/saved-professionals', savedProfessionalRoutes); // company bookmarks
 app.use('/api/payments', paymentRoutes);           // company payments + cash settlement
 app.use('/api/earnings', earningsRoutes);          // freelancer earnings
 app.use('/api/payout-account', payoutAccountRouter);
