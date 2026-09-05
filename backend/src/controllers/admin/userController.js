@@ -12,7 +12,7 @@ export const getFreelancers = async (req, res) => {
     
     // Find freelancers
     const freelancers = await User.find({ role: 'freelancer' })
-      .select('id name email phone city state profession created_at')
+      .select('id name email phone city state profession email_verified created_at')
       .sort({ created_at: -1 })
       .skip(skip)
       .limit(limit)
@@ -73,7 +73,7 @@ export const getCompanies = async (req, res) => {
     const skip = (page - 1) * limit;
     
     const companies = await User.find({ role: 'company' })
-      .select('id name email phone city state created_at')
+      .select('id name email phone city state email_verified created_at')
       .sort({ created_at: -1 })
       .skip(skip)
       .limit(limit)

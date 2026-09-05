@@ -1,7 +1,67 @@
 import { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { MailCheck, Loader2, Clock } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import PasswordInput from '../components/ui/PasswordInput';
+import useResendVerification from '../hooks/useResendVerification';
+
+/**
+ * Shown after a successful signup. The account exists but holds no session
+ * until the emailed link is opened, so this screen explains that and offers a
+ * resend rather than pretending the user is logged in.
+ */
+function CheckYourEmail({ email }) {
+  const { resend, sending, cooldown, message, error } = useResendVerification(email);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-brand-bg py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full rounded-3xl border border-brand-border bg-white p-10 text-center shadow-xl">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-primary/30 bg-brand-primary/5">
+          <MailCheck size={26} className="text-brand-primary" aria-hidden="true" />
+        </div>
+
+        <h2 className="font-serif text-2xl font-bold text-brand-navy">Confirm your email</h2>
+        <p className="mt-3 text-sm leading-relaxed text-brand-textSec">
+          We sent a verification link to
+        </p>
+        <p className="mt-1 break-all text-sm font-semibold text-brand-navy">{email}</p>
+        <p className="mt-3 text-[13px] leading-relaxed text-brand-textSec">
+          Open it to activate your account and sign in. The link expires in 24 hours.
+          If it is not in your inbox, check your spam folder.
+        </p>
+
+        {message && (
+          <p className="mt-5 rounded-xl border border-brand-success/30 bg-brand-success/10 p-3 text-[13px] font-medium text-brand-success">
+            {message}
+          </p>
+        )}
+        {error && (
+          <p className="mt-5 rounded-xl border border-brand-danger/30 bg-brand-danger/10 p-3 text-[13px] font-medium text-brand-danger">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={resend}
+          disabled={sending || cooldown > 0}
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-primaryDark disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {sending && <Loader2 size={15} className="animate-spin" aria-hidden="true" />}
+          {cooldown > 0 && <Clock size={15} aria-hidden="true" />}
+          {sending ? 'Sending...' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend verification email'}
+        </button>
+
+        <p className="mt-5 text-[13px] text-brand-textSec">
+          Already confirmed?{' '}
+          <Link to="/login" className="font-medium text-brand-primary underline-offset-4 hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function Register() {
   const [role, setRole] = useState('freelancer');
@@ -12,7 +72,10 @@ export default function Register() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  // Set once registration succeeds; switches the page to the "check your email"
+  // state. Registration no longer returns a token, so there is nothing to
+  // redirect into.
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   const { register } = useContext(AuthContext);
 
@@ -31,16 +94,30 @@ export default function Register() {
         password
       });
 
-      setSuccess('Account created successfully! Redirecting to login...');
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+      // No token is issued until the address is confirmed.
+      setRegisteredEmail(email.trim().toLowerCase());
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to register');
+      // The API returns a specific code per rejection, so the message can say
+      // what is actually wrong instead of a generic failure.
+      const data = err.response?.data || {};
+      const byCode = {
+        DISPOSABLE_EMAIL:
+          'Temporary or disposable email addresses are not accepted. Please use a permanent address.',
+        INVALID_EMAIL: 'That email address does not look valid. Check it for a typo.',
+        DOMAIN_CANNOT_RECEIVE_MAIL:
+          'That email domain cannot receive mail. Check the part after the @ for a typo.'
+      };
+      setError(byCode[data.code] || data.message || 'Failed to register');
     } finally {
       setLoading(false);
     }
   };
+
+  // Registration succeeded: the account exists but cannot sign in yet, so the
+  // page becomes a confirmation screen rather than redirecting to /login.
+  if (registeredEmail) {
+    return <CheckYourEmail email={registeredEmail} />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-brand-bg relative overflow-hidden py-12 px-4 sm:px-6 lg:px-8">

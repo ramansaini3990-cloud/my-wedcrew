@@ -41,6 +41,21 @@ export const AuthProvider = ({ children }) => {
     return res.data.user;
   };
 
+  /**
+   * Establishes a session from a token the server already issued, without a
+   * password round-trip. Used by the verify-email page: confirming the link
+   * proves address ownership, so the API returns a token directly.
+   *
+   * Additive - the existing login() path is untouched.
+   */
+  const applySession = (newToken, newUser) => {
+    setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(newUser));
+    return newUser;
+  };
+
   const register = async (userData) => {
     const res = await api.post('/api/auth/register', userData);
     return res.data;
@@ -54,7 +69,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, applySession }}>
       {children}
     </AuthContext.Provider>
   );

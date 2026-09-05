@@ -36,6 +36,25 @@ const userSchema = new mongoose.Schema({
   experience_years: { type: Number, min: 0, max: 80 },
   equipment: [{ type: String, trim: true }],
 
+  // --- Email verification (additive) ---------------------------------------
+  // A new account must confirm a working address before it can sign in. Legacy
+  // accounts predate this field; migrateEmailVerified.js backfills them to
+  // true so nobody who could already sign in is locked out.
+  email_verified: { type: Boolean, default: false, index: true },
+
+  /**
+   * SHA-256 hash of the verification token — NEVER the token itself.
+   *
+   * The raw token exists only in the emailed link. Storing the hash means a
+   * database dump, a log line or an admin screen cannot be used to verify
+   * somebody else's account. `select: false` keeps it out of routine reads,
+   * the same discipline as PayoutAccount's raw identifiers.
+   */
+  email_verification_token_hash: { type: String, select: false, default: null },
+  email_verification_expires: { type: Date, default: null },
+  /** Drives the 60-second resend throttle. */
+  email_verification_sent_at: { type: Date, default: null },
+
   /**
    * Public social profile URLs. Validated against per-platform host
    * allow-lists in services/mediaEmbedService.js before they are written.

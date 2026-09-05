@@ -17,6 +17,7 @@ const EXACT = {
   '/': null, // homepage keeps the full brand title
   '/login': 'Sign In',
   '/register': 'Join',
+  '/verify-email': 'Confirm your email',
   '/requirements': 'Requirements',
   '/freelancers': 'Professionals',
   '/messages': 'Messages',
@@ -29,7 +30,8 @@ const EXACT = {
   '/admin/requirements': 'Admin | Requirements',
   '/admin/subscriptions': 'Admin | Subscriptions',
   '/admin/master-data': 'Admin | Master Data',
-  '/admin/activity-logs': 'Admin | Activity Log'
+  '/admin/activity-logs': 'Admin | Activity Log',
+  '/admin/email-logs': 'Admin | Email Log'
 };
 
 const PREFIX = [

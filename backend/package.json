@@ -21,7 +21,8 @@
     "test:privacy": "node src/scripts/privacyPasswordTest.js",
     "test:gallery": "node src/scripts/galleryTest.js",
     "test:connection": "node src/scripts/connectionTest.js",
-    "test:payment": "node src/scripts/paymentTest.js"
+    "test:payment": "node src/scripts/paymentTest.js",
+    "migrate:email-verified": "node src/scripts/migrateEmailVerified.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

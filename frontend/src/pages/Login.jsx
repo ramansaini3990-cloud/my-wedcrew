@@ -1,12 +1,56 @@
 import { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { MailCheck, Loader2, Clock } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import PasswordInput from '../components/ui/PasswordInput';
+import useResendVerification from '../hooks/useResendVerification';
+
+/**
+ * Inline prompt for a correct password on an unconfirmed account.
+ *
+ * The credentials were right, so this is a recoverable step rather than a
+ * failure: it explains what happened and offers a resend on the same 60-second
+ * throttle the server enforces.
+ */
+function UnverifiedPrompt({ email }) {
+  const { resend, sending, cooldown, message, error } = useResendVerification(email);
+
+  return (
+    <div className="rounded-xl border border-brand-warning/40 bg-brand-warning/10 p-4 text-sm">
+      <p className="flex items-center gap-2 font-semibold text-brand-navy">
+        <MailCheck size={16} className="text-brand-primary" aria-hidden="true" />
+        Confirm your email to sign in
+      </p>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-brand-textSec">
+        Your password is correct, but <span className="font-medium text-brand-navy">{email}</span> has
+        not been confirmed yet. Open the link we emailed you, or send a new one.
+      </p>
+
+      {message && <p className="mt-2.5 text-[12.5px] font-medium text-brand-success">{message}</p>}
+      {error && <p className="mt-2.5 text-[12.5px] font-medium text-brand-danger">{error}</p>}
+
+      <button
+        type="button"
+        onClick={resend}
+        disabled={sending || cooldown > 0}
+        className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-brand-border bg-white px-3 py-2 text-[13px] font-semibold text-brand-navy transition-colors hover:border-brand-primary hover:text-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {sending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+        {cooldown > 0 && <Clock size={14} aria-hidden="true" />}
+        {sending ? 'Sending...' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend verification email'}
+      </button>
+    </div>
+  );
+}
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  // Set when the server answers 403 EMAIL_NOT_VERIFIED. An unverified account
+  // is a recoverable state, not a credentials failure, so it gets an inline
+  // resend prompt instead of a red error.
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
@@ -27,7 +71,14 @@ export default function Login() {
         navigate('/admin/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to login');
+      const data = err.response?.data || {};
+      if (data.code === 'EMAIL_NOT_VERIFIED') {
+        setUnverifiedEmail(data.email || email.trim().toLowerCase());
+        setError('');
+      } else {
+        setUnverifiedEmail('');
+        setError(data.message || 'Failed to login');
+      }
     } finally {
       setLoading(false);
     }
@@ -57,6 +108,8 @@ export default function Login() {
             {error}
           </div>
         )}
+
+        {unverifiedEmail && <UnverifiedPrompt email={unverifiedEmail} />}
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">

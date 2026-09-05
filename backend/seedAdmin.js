@@ -159,6 +159,15 @@ const run = async () => {
       } else {
         console.log(`Admin already exists: ${existing.email} (no changes made)`);
       }
+
+      // The admin must never be blocked by email verification - there is no
+      // mailbox to click a link in on a fresh deploy. Idempotent: only writes
+      // when it is actually needed.
+      if (existing.email_verified !== true) {
+        existing.email_verified = true;
+        await existing.save();
+        console.log('  email: marked as verified');
+      }
       console.log(`  name : ${existing.name}`);
       console.log(`  role : ${existing.role}`);
       await mongoose.connection.close();
@@ -191,7 +200,10 @@ const run = async () => {
       name,
       phone,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      // Seeded on the server, so address ownership is already established -
+      // and there is no inbox to confirm from on a first deploy.
+      email_verified: true
     });
 
     console.log(`Admin created: ${admin.email}`);

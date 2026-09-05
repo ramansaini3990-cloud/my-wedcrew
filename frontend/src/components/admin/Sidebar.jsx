@@ -11,6 +11,7 @@ import {
   BarChart3,
   Bell,
   Activity,
+  Mail,
   Settings,
   Database,
   X
@@ -49,6 +50,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         { name: 'Reports', path: '/admin/reports', icon: BarChart3 },
         { name: 'Notifications', path: '/admin/notifications', icon: Bell },
         { name: 'Activity Logs', path: '/admin/activity-logs', icon: Activity },
+        { name: 'Email Log', path: '/admin/email-logs', icon: Mail },
         { name: 'Settings', path: '/admin/settings', icon: Settings }
       ]
     }

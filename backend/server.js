@@ -5,6 +5,7 @@ import app from './src/app.js';
 import connectDB from './src/config/database.js'; // Mongoose connection
 import { initSocket, getIo } from './src/socket.js';
 import { logCorsPolicy } from './src/config/cors.js';
+import { logEmailPolicy } from './src/services/emailService.js';
 
 dotenv.config();
 
@@ -26,6 +27,8 @@ server.listen(PORT, '0.0.0.0', () => {
   // Surfaces the effective allow-list in deploy logs, so a misconfigured
   // CORS_ORIGINS is visible at boot rather than as a mystery 403 later.
   logCorsPolicy();
+  // Shows which mail adapter is live, and shouts if production would send nothing.
+  logEmailPolicy();
 });
 
 /**

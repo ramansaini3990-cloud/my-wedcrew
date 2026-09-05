@@ -15,6 +15,7 @@ import Professionals from './pages/Professionals';
 import PublicProfile from './pages/PublicProfile';
 import RequirementDetail from './pages/RequirementDetail';
 import Messages from './pages/Messages';
+import VerifyEmail from './pages/VerifyEmail';
 
 // Admin imports
 import ErrorBoundary from './components/ErrorBoundary';
@@ -28,6 +29,7 @@ import AdminComingSoon from './pages/admin/ComingSoon';
 import AdminMasterData from './pages/admin/MasterData';
 import AdminActivityLog from './pages/admin/ActivityLog';
 import AdminFinance from './pages/admin/Finance';
+import AdminEmailLogs from './pages/admin/EmailLogs';
 
 import ScrollToTop from './components/ScrollToTop';
 import DocumentTitle from './components/DocumentTitle';
@@ -53,6 +55,7 @@ function App() {
               <Route index element={<Home />} />
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
+              <Route path="verify-email" element={<VerifyEmail />} />
               <Route path="requirements" element={<Requirements />} />
               <Route path="requirements/:id" element={<RequirementDetail />} />
               <Route path="professionals/:id" element={<PublicProfile />} />
@@ -111,6 +114,7 @@ function App() {
               <Route path="master-data" element={<AdminMasterData />} />
               <Route path="activity-logs" element={<AdminActivityLog />} />
               <Route path="payments" element={<AdminFinance />} />
+              <Route path="email-logs" element={<AdminEmailLogs />} />
               <Route path="*" element={<AdminComingSoon />} />
             </Route>
           </Routes>

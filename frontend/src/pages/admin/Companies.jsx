@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../utils/api';
-import { MoreVertical, Search, Filter, Briefcase } from 'lucide-react';
+import { MailCheck, MoreVertical, Search, Filter, Briefcase } from 'lucide-react';
 
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
@@ -22,6 +22,25 @@ const Companies = () => {
       console.error('Failed to load companies', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+
+  // Manual override for accounts that genuinely cannot receive our mail.
+  // Always audited server-side through activityService.
+  const [verifying, setVerifying] = useState(null);
+
+  const verifyEmail = async (row) => {
+    const id = row.id || row._id;
+    if (!window.confirm(`Mark ${row.name}'s email as verified? They will be able to sign in without confirming the link.`)) return;
+    setVerifying(id);
+    try {
+      await api.patch(`/api/admin/users/${id}/verify-email`, {});
+      await fetchCompanies(page);
+    } catch (err) {
+      window.alert(err.response?.data?.message || 'Could not verify that account.');
+    } finally {
+      setVerifying(null);
     }
   };
 
@@ -105,6 +124,17 @@ const Companies = () => {
                       {new Date(c.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
+                      {c.email_verified === false && (
+                        <button
+                          onClick={() => verifyEmail(c)}
+                          disabled={verifying === (c.id || c._id)}
+                          title="Mark this account's email as verified"
+                          className="mr-1 inline-flex items-center gap-1 rounded-lg border border-brand-border px-2 py-1 text-[11.5px] font-semibold text-brand-navy transition-colors hover:border-brand-primary hover:text-brand-primary disabled:opacity-50"
+                        >
+                          <MailCheck size={13} aria-hidden="true" />
+                          {verifying === (c.id || c._id) ? 'Verifying…' : 'Verify'}
+                        </button>
+                      )}
                       <button className="text-brand-textSec hover:text-brand-primary p-2 rounded-lg hover:bg-brand-primary/10 transition-colors">
                         <MoreVertical size={18} />
                       </button>

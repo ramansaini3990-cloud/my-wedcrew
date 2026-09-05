@@ -10,6 +10,7 @@ import {
   setGalleryItemVisibility,
   deleteGalleryItemAsAdmin
 } from '../controllers/admin/galleryController.js';
+import { listEmailLogs, adminVerifyUserEmail } from '../controllers/admin/emailController.js';
 
 const router = express.Router();
 
@@ -33,6 +34,10 @@ router.get('/gallery', listAllGalleryItems);
 router.get('/gallery/freelancers/:id', getFreelancerPortfolio);
 router.patch('/gallery/:id/visibility', setGalleryItemVisibility);
 router.delete('/gallery/:id', deleteGalleryItemAsAdmin);
+
+// --- Email / verification -------------------------------------------------
+router.get('/email-logs', listEmailLogs);
+router.patch('/users/:id/verify-email', adminVerifyUserEmail);
 
 // Placeholders for future phases
 // router.get('/payments', getPayments);

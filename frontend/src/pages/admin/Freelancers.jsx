@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../utils/api';
-import { MoreVertical, Search, Filter, Edit, Trash2, ShieldCheck, Ban, Star } from 'lucide-react';
+import { MailCheck, MoreVertical, Search, Filter, Edit, Trash2, ShieldCheck, Ban, Star } from 'lucide-react';
 
 const Freelancers = () => {
   const [freelancers, setFreelancers] = useState([]);
@@ -22,6 +22,25 @@ const Freelancers = () => {
       console.error('Failed to load freelancers', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+
+  // Manual override for accounts that genuinely cannot receive our mail.
+  // Always audited server-side through activityService.
+  const [verifying, setVerifying] = useState(null);
+
+  const verifyEmail = async (row) => {
+    const id = row.id || row._id;
+    if (!window.confirm(`Mark ${row.name}'s email as verified? They will be able to sign in without confirming the link.`)) return;
+    setVerifying(id);
+    try {
+      await api.patch(`/api/admin/users/${id}/verify-email`, {});
+      await fetchFreelancers(page);
+    } catch (err) {
+      window.alert(err.response?.data?.message || 'Could not verify that account.');
+    } finally {
+      setVerifying(null);
     }
   };
 
@@ -128,6 +147,17 @@ const Freelancers = () => {
                       {new Date(f.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
+                      {f.email_verified === false && (
+                        <button
+                          onClick={() => verifyEmail(f)}
+                          disabled={verifying === (f.id || f._id)}
+                          title="Mark this account's email as verified"
+                          className="mr-1 inline-flex items-center gap-1 rounded-lg border border-brand-border px-2 py-1 text-[11.5px] font-semibold text-brand-navy transition-colors hover:border-brand-primary hover:text-brand-primary disabled:opacity-50"
+                        >
+                          <MailCheck size={13} aria-hidden="true" />
+                          {verifying === (f.id || f._id) ? 'Verifying…' : 'Verify'}
+                        </button>
+                      )}
                       <button className="text-brand-textSec hover:text-brand-primary p-2 rounded-lg hover:bg-brand-primary/10 transition-colors">
                         <MoreVertical size={18} />
                       </button>
