@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { publishUnreadTotal } from '../hooks/useUnreadMessages';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -161,7 +162,10 @@ const Messages = ({ embedded = false }) => {
       )
     );
     try {
-      await api.patch(`/api/chat/conversations/${conversationId}/read`);
+      const res = await api.patch(`/api/chat/conversations/${conversationId}/read`);
+      // The same response carries the new grand total, so the sidebar badge
+      // updates from one round-trip instead of a second request.
+      publishUnreadTotal(res.data?.total_unread);
     } catch (err) {
       // Non-fatal: the next conversations fetch restores the true count.
       console.error('Failed to mark conversation as read', err);

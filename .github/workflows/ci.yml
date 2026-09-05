@@ -1,0 +1,133 @@
+# WedCrew CI
+#
+# WHAT THIS DOES NOT DO — and why:
+#
+# CI deliberately does NOT run the E2E suites (`npm run test:*`). Those suites
+# are not hermetic: they drive the real HTTP API and the real Socket.IO server
+# against the live MongoDB Atlas database, and their cleanup step DELETES EVERY
+# `@e2e.local` user it finds. Running them from CI would mutate production data
+# and would race with anyone testing locally. They stay a local, deliberate,
+# human-run step.
+#
+# CI also never boots the backend: backend/src/config/database.js calls
+# process.exit() when it cannot reach Atlas, so a boot check would fail on
+# infrastructure rather than on code. Syntax checking every file gives the
+# useful signal without the network dependency.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # --------------------------------------------------------------- FRONTEND --
+  frontend:
+    name: Frontend — lint + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      # oxlint EXITS 0 EVEN WITH WARNINGS and prints no summary line, so the
+      # count has to be parsed from its per-warning output. Each warning is one
+      # stdout line of the form:
+      #   src/pages/Foo.jsx:12:34: warning eslint(no-unused-vars): ...
+      # npm's own "> twb2@0.0.0 lint" header lines contain no ": warning " and
+      # are therefore not counted. Verified against the real output: 30.
+      - name: Lint (baseline 30 warnings)
+        run: |
+          set -o pipefail
+          BASELINE=30
+          npm run lint 2>&1 | tee lint.log || LINT_EXIT=$?
+          if [ "${LINT_EXIT:-0}" -ne 0 ]; then
+            echo "::error::oxlint exited ${LINT_EXIT} — it reported hard errors, not just warnings."
+            exit 1
+          fi
+          COUNT=$(grep -c ': warning ' lint.log || true)
+          echo "oxlint warnings: ${COUNT} (baseline ${BASELINE})"
+          if [ "$COUNT" -gt "$BASELINE" ]; then
+            echo "::error::Lint warnings increased to ${COUNT}, above the documented baseline of ${BASELINE}."
+            grep ': warning ' lint.log || true
+            exit 1
+          fi
+
+      - run: npm run build
+
+  # ---------------------------------------------------------------- BACKEND --
+  backend:
+    name: Backend — install + syntax check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      # Parses every module without executing it. Catches syntax errors and
+      # malformed ESM without touching the database.
+      - name: Syntax check
+        run: |
+          set -e
+          FAILED=0
+          for file in $(find src -name '*.js') server.js seedAdmin.js; do
+            if ! node --check "$file"; then
+              echo "::error file=backend/${file}::Syntax check failed"
+              FAILED=1
+            fi
+          done
+          exit $FAILED
+
+  # ---------------------------------------------------------------- SECRETS --
+  secrets:
+    name: Secret hygiene
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No .env file may be tracked by git
+        run: |
+          TRACKED=$(git ls-files | grep -E '(^|/)\.env(\.local|\.production)?$' || true)
+          if [ -n "$TRACKED" ]; then
+            echo "::error::Environment files are tracked by git:"
+            echo "$TRACKED"
+            exit 1
+          fi
+          echo "No tracked .env files."
+
+      # rzp_live_ is the Razorpay LIVE key prefix. Documentation and this
+      # workflow may mention it; source and config may not contain one.
+      - name: No live Razorpay key in the tree
+        run: |
+          HITS=$(grep -rIl 'rzp_live_' . \
+            --exclude-dir=node_modules --exclude-dir=.git \
+            --exclude='*.yml' --exclude='*.yaml' --exclude='*.md' || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::A live Razorpay key appears in:"
+            echo "$HITS"
+            exit 1
+          fi
+          echo "No live Razorpay keys found."

@@ -23,7 +23,11 @@ const ALLOWED_METADATA_KEYS = new Set([
   'city', 'state', 'profession', 'category', 'event_date', 'quantity',
   'requirement_id', 'application_id', 'booking_id', 'conversation_id',
   'subscription_id', 'availability_status', 'record_type', 'record_name',
-  'account_type', 'reason', 'count'
+  'account_type', 'reason', 'count',
+  // Payment/finance metadata. Amounts are integer paise and references are
+  // opaque ids - no card, bank or account identifier is ever logged.
+  'reference', 'amount_paise', 'fee_paise', 'net_paise', 'method',
+  'payment_id', 'withdrawal_id', 'provider', 'transaction_id'
 ]);
 
 /** Values that must never be persisted regardless of key. */

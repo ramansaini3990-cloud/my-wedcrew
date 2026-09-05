@@ -11,8 +11,10 @@ import {
   toLockedProfessional,
   canViewProfessionalDetails,
   deriveCurrentAvailability,
-  loadPublicBlocks
+  loadPublicBlocks,
+  loadPublicGallery
 } from '../services/publicProfileService.js';
+import { getViewerConnectionState } from '../services/connectionService.js';
 
 const router = express.Router();
 
@@ -43,8 +45,16 @@ router.get('/freelancers/:id', optionalAuth, async (req, res) => {
     // serialised, so they cannot be recovered from the response.
     const unlocked = await canViewProfessionalDetails(req.user, user._id);
     if (!unlocked) {
+      // The portfolio is identifying work, so it stays behind the same gate as
+      // the name and photo - it is never loaded, let alone serialised.
       return res.json({ success: true, data: toLockedProfessional(user, blocks) });
     }
+
+    const gallery = await loadPublicGallery(user._id);
+
+    // Viewer-specific: describes only the caller's own relationship with this
+    // professional, and is null for anonymous or non-company callers.
+    const viewerConnection = await getViewerConnectionState(req.user, user._id);
 
     // Published open days from the existing day-calendar.
     const today = new Date();
@@ -59,6 +69,9 @@ router.get('/freelancers/:id', optionalAuth, async (req, res) => {
       success: true,
       data: {
         ...toPublicProfessional(user, blocks),
+        gallery,
+        featured_gallery: gallery.filter((g) => g.featured),
+        viewer_connection: viewerConnection,
         available_dates: openDays.map((a) => {
           const d = new Date(a.date);
           return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

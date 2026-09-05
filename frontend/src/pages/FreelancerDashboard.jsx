@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import api from '../utils/api';
-import { Camera, Calendar, Star, IndianRupee, Bell, Briefcase, Settings, ChevronRight, FileText, MessageSquare, Menu } from 'lucide-react';
+import { Camera, Calendar, Star, IndianRupee, Bell, Briefcase, Settings, ChevronRight, FileText, MessageSquare, Menu, GalleryVerticalEnd } from 'lucide-react';
 import { motion } from 'framer-motion';
 import NotificationsView from '../components/NotificationsView';
 import SubscriptionStatusCard from '../components/SubscriptionStatusCard';
@@ -14,7 +14,10 @@ import useSubscription from '../hooks/useSubscription';
 import ProfileForm from '../components/profile/ProfileForm';
 import ProfileSummaryCard from '../components/dashboard/ProfileSummaryCard';
 import useMyProfile from '../hooks/useMyProfile';
+import useUnreadMessages from '../hooks/useUnreadMessages';
 import TravelAvailability from '../components/profile/TravelAvailability';
+import PortfolioManager from '../components/gallery/PortfolioManager';
+import FreelancerEarnings from '../components/payments/FreelancerEarnings';
 
 export default function FreelancerDashboard() {
   const { user, logout } = useContext(AuthContext);
@@ -23,7 +26,7 @@ export default function FreelancerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { subscription, loading: subscriptionLoading } = useSubscription();
-  const { profile: myProfile, loading: myProfileLoading } = useMyProfile();
+  const { profile: myProfile, loading: myProfileLoading, refresh: refreshMyProfile } = useMyProfile();
   
   const [showModal, setShowModal] = useState(false);
   const [profileData, setProfileData] = useState({ name: '', email: '', phone: '', city: '', profession: '', state: '', availableDates: [] });
@@ -35,6 +38,8 @@ export default function FreelancerDashboard() {
   const [loading, setLoading] = useState(true);
 
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  // Chat unread is its own counter - never folded into Notifications.
+  const { unreadMessages } = useUnreadMessages();
   const [myApplications, setMyApplications] = useState([]);
   const [loadingApps, setLoadingApps] = useState(false);
 
@@ -266,9 +271,10 @@ export default function FreelancerDashboard() {
         fallbackInitial="F"
         tabs={[
           { id: 'overview', label: 'Overview', icon: Camera },
+          { id: 'portfolio', label: 'Portfolio', icon: GalleryVerticalEnd },
           { id: 'requests', label: 'Booking Requests', icon: Briefcase, badge: pendingRequestsCount },
           { id: 'applications', label: 'My Applications', icon: FileText },
-          { id: 'messages', label: 'Messages', icon: MessageSquare },
+          { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessages },
           { id: 'calendar', label: 'Availability', icon: Calendar },
           { id: 'earnings', label: 'Earnings', icon: IndianRupee },
           { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadNotifications },
@@ -306,14 +312,8 @@ export default function FreelancerDashboard() {
         <div className="max-w-[1200px] mx-auto px-4 sm:px-5 py-5 space-y-5">
           
           {activeTab === 'earnings' && (
-            <div className="animate-fade-in flex flex-col items-center justify-center p-10 bg-brand-surface rounded-xl border border-brand-border">
-              <div className="h-11 w-11 bg-brand-primary/10 text-brand-primary rounded-xl flex items-center justify-center mb-3">
-                <IndianRupee size={20} />
-              </div>
-              <h2 className="text-sm font-semibold text-brand-navy">Earnings</h2>
-              <p className="text-[13px] text-brand-textSec text-center max-w-md mt-1">
-                This module is currently being updated to match the new premium experience. Check back soon.
-              </p>
+            <div className="animate-fade-in">
+              <FreelancerEarnings />
             </div>
           )}
 
@@ -590,6 +590,12 @@ export default function FreelancerDashboard() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'portfolio' && (
+            <div className="animate-fade-in">
+              <PortfolioManager profile={myProfile} onProfileChange={refreshMyProfile} />
             </div>
           )}
 

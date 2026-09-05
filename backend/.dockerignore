@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log
+
+# Never bake secrets into an image. .env.example is kept as documentation.
+.env
+.env.*
+!.env.example
+
+# Runtime user media — belongs on a volume, not in the image.
+uploads
+
+.git
+.gitignore
+*.md
+test-db.js

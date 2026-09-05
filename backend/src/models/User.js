@@ -37,6 +37,21 @@ const userSchema = new mongoose.Schema({
   equipment: [{ type: String, trim: true }],
 
   /**
+   * Public social profile URLs. Validated against per-platform host
+   * allow-lists in services/mediaEmbedService.js before they are written.
+   *
+   * These are PUBLIC links only - no social credential is ever requested or
+   * stored anywhere in this application.
+   */
+  social_links: {
+    instagram: { type: String, trim: true, default: '' },
+    youtube: { type: String, trim: true, default: '' },
+    facebook: { type: String, trim: true, default: '' },
+    linkedin: { type: String, trim: true, default: '' },
+    website: { type: String, trim: true, default: '' }
+  },
+
+  /**
    * Free-form base location for cases where the selected city is not precise
    * enough (e.g. "25 km outside Udaipur, near Nathdwara").
    *

@@ -1,0 +1,111 @@
+# Render blueprint for WedCrew (mywedcrew.com).
+#
+# No secret values live in this file. Every credential is declared with
+# `sync: false`, which tells Render to prompt for it in the dashboard and keep
+# it out of git.
+#
+# autoDeploy is false on both services deliberately: the working tree carries a
+# large amount of uncommitted work, and an accidental push should not ship it.
+# Turn it on once the branch is stable.
+
+services:
+  # ------------------------------------------------------------------ API ---
+  - type: web
+    name: wedcrew-api
+    runtime: node
+    region: singapore
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeploy: false
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render routes external traffic to this port; server.js reads PORT.
+      - key: PORT
+        value: 10000
+      # No trailing slashes. Empty here would reject every browser request.
+      - key: CORS_ORIGINS
+        value: https://mywedcrew.com,https://www.mywedcrew.com
+      - key: CORS_ALLOW_LAN
+        value: false
+      # Switch to "razorpay" only once the live keys below are populated.
+      - key: PAYMENT_PROVIDER
+        value: sandbox
+
+      # ---- Secrets: set these in the Render dashboard, never in git --------
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: SANDBOX_PAYMENT_SECRET
+        sync: false
+      - key: MEDIA_PUBLIC_PREFIX
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_FIRST_NAME
+        sync: false
+      - key: ADMIN_LAST_NAME
+        sync: false
+      - key: ADMIN_MOBILE
+        sync: false
+
+    # ---- Persistent storage for uploaded portfolio media -------------------
+    # backend/uploads/ is LOCAL DISK. Render's filesystem is ephemeral: without
+    # a persistent disk, every deploy and every restart WIPES all uploaded
+    # images and videos, leaving GalleryItem rows pointing at missing files.
+    #
+    # Uncomment this block to attach a disk, OR migrate uploadService.js to
+    # object storage (S3/R2/Cloudinary) and point MEDIA_PUBLIC_PREFIX at the
+    # bucket — the storage adapter was written to make that a config change.
+    #
+    # disk:
+    #   name: wedcrew-uploads
+    #   mountPath: /opt/render/project/src/uploads
+    #   sizeGB: 5
+
+  # ------------------------------------------------------------- FRONTEND ---
+  - type: web
+    name: wedcrew-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeploy: false
+
+    envVars:
+      # Replace with the real API host once wedcrew-api is deployed, then keep
+      # it in sync with CORS_ORIGINS above or the browser will be blocked.
+      - key: VITE_API_URL
+        value: https://wedcrew-api.onrender.com
+
+    # SPA fallback: react-router owns client-side routing, so every unknown
+    # path must return index.html rather than a 404.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      # Vite emits content-hashed filenames under /assets, so they are safe to
+      # cache permanently. index.html is deliberately excluded.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable

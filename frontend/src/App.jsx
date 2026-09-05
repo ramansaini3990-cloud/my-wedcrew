@@ -27,6 +27,7 @@ import Subscriptions from './pages/admin/Subscriptions';
 import AdminComingSoon from './pages/admin/ComingSoon';
 import AdminMasterData from './pages/admin/MasterData';
 import AdminActivityLog from './pages/admin/ActivityLog';
+import AdminFinance from './pages/admin/Finance';
 
 import ScrollToTop from './components/ScrollToTop';
 import DocumentTitle from './components/DocumentTitle';
@@ -109,6 +110,7 @@ function App() {
               <Route path="subscriptions" element={<Subscriptions />} />
               <Route path="master-data" element={<AdminMasterData />} />
               <Route path="activity-logs" element={<AdminActivityLog />} />
+              <Route path="payments" element={<AdminFinance />} />
               <Route path="*" element={<AdminComingSoon />} />
             </Route>
           </Routes>

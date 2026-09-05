@@ -1,8 +1,10 @@
+import mongoose from 'mongoose';
 import Application from '../models/Application.js';
 import Requirement from '../models/Requirement.js';
 import Notification from '../models/Notification.js';
 import { emitNotification } from '../socket.js';
 import { logFromRequest } from '../services/activityService.js';
+import { ensureConversation } from '../services/connectionService.js';
 
 export const createApplication = async (req, res) => {
   try {
@@ -73,24 +75,34 @@ export const getRequirementApplications = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/applications/my/requirement/:requirementId
+ *
+ * Whether the signed-in freelancer has already applied to this requirement.
+ * Returns `data: null` (200) when they have not - "no application" is a normal
+ * answer, not an error, so the client can tell it apart from a failed request.
+ *
+ * This previously carried a copy-pasted activity-log block that referenced an
+ * undefined `status` and an unpopulated `requirement_id`, so every call threw
+ * "status is not defined" and returned 500. The UI swallowed that as "not
+ * applied" and showed "Apply Now" even to a freelancer whose application had
+ * already been accepted. A read endpoint should not write an audit event at
+ * all, so the block is removed rather than repaired.
+ */
 export const getMyApplicationForRequirement = async (req, res) => {
   try {
     const { requirementId } = req.params;
     const freelancer_id = req.user.id || req.user._id;
-    const application = await Application.findOne({ requirement_id: requirementId, freelancer_id });
-    await logFromRequest(req, {
-      eventType: `application.${status}`,
-      category: 'applications',
-      severity: status === 'accepted' ? 'success' : status === 'rejected' ? 'warning' : 'info',
-      title: `Application ${status}`,
-      description: `${application.requirement_id.category} application ${status}`,
-      target: { type: 'application', id: application._id, label: application.requirement_id.category },
-      metadata: { status, category: application.requirement_id.category }
-    });
 
-    res.json({ success: true, data: application });
+    if (!mongoose.isValidObjectId(requirementId)) {
+      return res.status(400).json({ code: 'VALIDATION_ERROR', message: 'Invalid requirement id.' });
+    }
+
+    const application = await Application.findOne({ requirement_id: requirementId, freelancer_id }).lean();
+    res.json({ success: true, data: application || null });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('getMyApplicationForRequirement error:', error);
+    res.status(500).json({ code: 'SERVER_ERROR', message: 'Failed to load your application.' });
   }
 };
 
@@ -121,6 +133,35 @@ export const updateApplicationStatus = async (req, res) => {
     application.status = status;
     await application.save();
 
+    // An accepted application is the freelancer -> company half of a
+    // connection, and until now it opened no conversation - so the
+    // "you can now chat" notification below pointed at nothing. The same
+    // shared helper is used as the booking path, so a pair that connects both
+    // ways still ends up with exactly one conversation.
+    let conversation = null;
+    if (status === 'accepted') {
+      const result = await ensureConversation(
+        application.company_id,
+        application.freelancer_id,
+        { requirement_id: application.requirement_id?._id || application.requirement_id }
+      );
+      conversation = result.conversation;
+
+      if (result.created) {
+        await logFromRequest(req, {
+          eventType: 'conversation.created',
+          category: 'messages',
+          title: 'New conversation created',
+          description: 'Opened by an accepted application',
+          target: { type: 'conversation', id: conversation._id },
+          metadata: {
+            conversation_id: String(conversation._id),
+            application_id: String(application._id)
+          }
+        });
+      }
+    }
+
     let title = '';
     let msg = '';
     
@@ -144,6 +185,7 @@ export const updateApplicationStatus = async (req, res) => {
         message: msg,
         application_id: application._id,
         requirement_id: application.requirement_id._id,
+        ...(conversation ? { conversation_id: conversation._id } : {}),
         sender_id: company_id
       });
       await notification.save();

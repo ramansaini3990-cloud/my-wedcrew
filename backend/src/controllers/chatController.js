@@ -5,7 +5,8 @@ import { logFromRequest } from '../services/activityService.js';
 import {
   getUnreadCountsByConversation,
   markConversationRead,
-  countUnreadForConversation
+  countUnreadForConversation,
+  countTotalUnread
 } from '../services/chatUnreadService.js';
 
 const idOf = (value) => {
@@ -239,9 +240,33 @@ export const markConversationAsRead = async (req, res) => {
     const marked = await markConversationRead(conversationId, userId);
     const unreadCount = await countUnreadForConversation(conversationId, userId);
 
-    res.json({ success: true, conversation_id: String(conversationId), marked, unread_count: unreadCount });
+    const totalUnread = await countTotalUnread(userId);
+
+    res.json({
+      success: true,
+      conversation_id: String(conversationId),
+      marked,
+      unread_count: unreadCount,
+      total_unread: totalUnread
+    });
   } catch (error) {
     console.error('markConversationAsRead error:', error);
     res.status(500).json({ code: 'SERVER_ERROR', message: 'Failed to update read state' });
+  }
+};
+
+/**
+ * GET /api/chat/unread-count
+ *
+ * Total unread messages for the signed-in user, for the sidebar badge.
+ * Scoped to req.user, so a caller can only ever read their own count.
+ */
+export const getUnreadMessageCount = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    res.json({ success: true, total_unread: await countTotalUnread(userId) });
+  } catch (error) {
+    console.error('getUnreadMessageCount error:', error);
+    res.status(500).json({ code: 'SERVER_ERROR', message: 'Failed to load unread count' });
   }
 };

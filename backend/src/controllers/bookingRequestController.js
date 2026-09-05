@@ -2,6 +2,7 @@ import BookingRequest from '../models/BookingRequest.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import Conversation from '../models/Conversation.js';
+import { canSendBookingRequest, ensureConversation } from '../services/connectionService.js';
 import { emitNotification } from '../socket.js';
 import { logFromRequest } from '../services/activityService.js';
 
@@ -29,16 +30,15 @@ export const createBookingRequest = async (req, res) => {
       return res.status(404).json({ code: 'USER_NOT_FOUND', message: 'Freelancer not found' });
     }
 
-    // Duplicate protection - one pending request per company/freelancer pair.
-    const existingRequest = await BookingRequest.findOne({
-      company_id: req.user.id,
-      freelancer_id,
-      status: 'pending'
-    });
-    if (existingRequest) {
+    // Duplicate protection, server-side. Covers both an in-flight pending
+    // request and an already-established connection - see connectionService
+    // for why a NEW requirement is still allowed.
+    const permission = await canSendBookingRequest(req.user.id, freelancer_id, requirement_id);
+    if (!permission.allowed) {
       return res.status(400).json({
-        code: 'DUPLICATE_BOOKING_REQUEST',
-        message: 'A pending booking request already exists for this freelancer.'
+        code: permission.code,
+        message: permission.message,
+        conversation_id: permission.conversation_id || undefined
       });
     }
 
@@ -159,20 +159,15 @@ export const updateBookingRequestStatus = async (req, res) => {
     const freelancerName = freelancer ? freelancer.name : 'A freelancer';
 
     if (status === 'accepted') {
-      // Duplicate protection - reuse the conversation if one already exists.
-      let conversation = await Conversation.findOne({
-        company_id: bookingRequest.company_id,
-        freelancer_id: bookingRequest.freelancer_id
-      });
+      // One shared helper opens conversations for every lifecycle event, so
+      // an accepted booking and an accepted application cannot create two.
+      const { conversation, created } = await ensureConversation(
+        bookingRequest.company_id,
+        bookingRequest.freelancer_id,
+        { requirement_id: bookingRequest.requirement_id, booking_id: bookingRequest._id }
+      );
 
-      if (!conversation) {
-        conversation = new Conversation({
-          company_id: bookingRequest.company_id,
-          freelancer_id: bookingRequest.freelancer_id,
-          requirement_id: bookingRequest.requirement_id,
-          booking_id: bookingRequest._id
-        });
-        await conversation.save();
+      if (created) {
 
         // Accepting a booking is the other place a conversation is born.
         // Logged only on actual creation, so the event is never duplicated

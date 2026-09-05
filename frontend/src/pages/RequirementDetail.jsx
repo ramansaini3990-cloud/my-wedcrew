@@ -1,9 +1,6 @@
 import { useState, useEffect, useContext, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import {
-  MapPin, CalendarDays, Clock, Users, ArrowLeft,
-  AlertCircle, Loader2, Building2, Check, X, Lock
-} from 'lucide-react';
+import { MapPin, CalendarDays, Clock, Users, ArrowLeft, AlertCircle, Loader2, Building2, Check, X, Lock, CheckCircle2, MessageSquare } from 'lucide-react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import Badge from '../components/ui/Badge';
@@ -45,6 +42,7 @@ export default function RequirementDetail() {
   const [error, setError] = useState(null);
 
   const [application, setApplication] = useState(null);
+  const [applicationLoadFailed, setApplicationLoadFailed] = useState(false);
   const [showApply, setShowApply] = useState(false);
   const [form, setForm] = useState({ proposed_rate: '', availability: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -73,8 +71,19 @@ export default function RequirementDetail() {
     let cancelled = false;
     api
       .get(`/api/applications/my/requirement/${id}`)
-      .then((res) => { if (!cancelled) setApplication(res.data?.data || null); })
-      .catch(() => { /* not applied, or unavailable - treated as "no application" */ });
+      .then((res) => {
+        if (cancelled) return;
+        setApplication(res.data?.data || null);
+        setApplicationLoadFailed(false);
+      })
+      .catch((err) => {
+        // Distinguish "no application" (a 200 with data: null) from a failed
+        // lookup. Treating a failure as "not applied" is what previously hid a
+        // 500 behind a working-looking Apply button.
+        if (cancelled) return;
+        console.error('Could not load your application state', err);
+        setApplicationLoadFailed(true);
+      });
     return () => { cancelled = true; };
   }, [id, isFreelancer]);
 
@@ -273,11 +282,30 @@ export default function RequirementDetail() {
                 </p>
               )}
 
-              {application ? (
+              {application?.status === 'accepted' ? (
+                <>
+                  <p className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-green-700">
+                    <CheckCircle2 size={15} aria-hidden="true" /> Connected
+                  </p>
+                  <Link
+                    to="/messages"
+                    className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-brand-primary px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-brand-primaryDark"
+                  >
+                    <MessageSquare size={14} aria-hidden="true" /> Message
+                  </Link>
+                  <p className="mt-2.5 text-[11px] text-brand-textSec">
+                    Your application was accepted. Messaging requires both accounts to hold an active plan.
+                  </p>
+                </>
+              ) : application ? (
                 <div className="rounded-lg border border-brand-border bg-brand-bg p-3">
                   <p className="text-[12px] text-brand-textSec">Your application</p>
                   <p className="mt-1 text-[14px] font-semibold text-brand-navy capitalize">{application.status || 'pending'}</p>
                 </div>
+              ) : applicationLoadFailed ? (
+                <p className="text-[13px] text-brand-textSec">
+                  Could not check your application status. Reload the page before applying.
+                </p>
               ) : !user ? (
                 <Link to="/login" className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-brand-primary text-white text-[13px] font-semibold hover:bg-brand-primaryDark transition-colors">
                   Sign in to apply

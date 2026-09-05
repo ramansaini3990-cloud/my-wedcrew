@@ -289,15 +289,16 @@ const run = async () => {
     /* ------------------------------------------------------------ */
     section('TEST 9 / 10: booking notifications still reach the Notifications sidebar');
 
-    const b2 = await request('POST', '/api/booking-requests', { token: company.token, body: { freelancer_id: freelancerB.id } });
-    const dec = await request('PUT', `/api/booking-requests/${b2.data.requestId}/status`, { token: freelancerB.token, body: { status: 'declined' } });
+    const freelancerC = await register('freelancer', 'freelancerC', { profession: 'Video Editor' });
+    const b2 = await request('POST', '/api/booking-requests', { token: company.token, body: { freelancer_id: freelancerC.id } });
+    const dec = await request('PUT', `/api/booking-requests/${b2.data.requestId}/status`, { token: freelancerC.token, body: { status: 'declined' } });
     check('Booking declined', dec.status === 200);
 
     const cNotifs = await request('GET', '/api/notifications', { token: company.token });
     const cTypes = (cNotifs.data?.data || []).map((n) => n.type);
     check('"booking_request_accepted" still in Notifications', cTypes.includes('booking_request_accepted'));
     check('"booking_request_rejected" still in Notifications', cTypes.includes('booking_request_rejected'));
-    const fbNotifs = await request('GET', '/api/notifications', { token: freelancerB.token });
+    const fbNotifs = await request('GET', '/api/notifications', { token: freelancerC.token });
     check('"new_booking_request" still in Notifications',
       (fbNotifs.data?.data || []).map((n) => n.type).includes('new_booking_request'));
     check('Company notification unread count > 0 (system events still counted)',

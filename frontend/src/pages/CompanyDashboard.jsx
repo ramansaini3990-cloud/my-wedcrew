@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { PlusCircle, Users, Search, ListTodo, Star, Building2, Bell, Settings, ChevronRight, Crown , MessageSquare, Menu } from 'lucide-react';
+import { PlusCircle, Users, Search, ListTodo, Star, Building2, Bell, Settings, ChevronRight, Crown, MessageSquare, Menu, Wallet } from 'lucide-react';
 import { motion } from 'framer-motion';
 import NotificationsView from '../components/NotificationsView';
 import SubscriptionStatusCard from '../components/SubscriptionStatusCard';
@@ -11,6 +11,8 @@ import DashboardSidebar from '../components/dashboard/DashboardSidebar';
 import Messages from './Messages';
 import Avatar from '../components/ui/Avatar';
 import useSubscription from '../hooks/useSubscription';
+import useUnreadMessages from '../hooks/useUnreadMessages';
+import CompanyPayments from '../components/payments/CompanyPayments';
 import ProfileForm from '../components/profile/ProfileForm';
 import ProfileSummaryCard from '../components/dashboard/ProfileSummaryCard';
 import useMyProfile from '../hooks/useMyProfile';
@@ -68,6 +70,8 @@ export default function CompanyDashboard() {
   };
 
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  // Chat unread is its own counter - never folded into Notifications.
+  const { unreadMessages } = useUnreadMessages();
 
   useEffect(() => {
     if (socket) {
@@ -168,7 +172,8 @@ export default function CompanyDashboard() {
         tabs={[
           { id: 'overview', label: 'Studio Overview', icon: Building2 },
           { id: 'requirements', label: 'Manage Requirements', icon: ListTodo },
-          { id: 'messages', label: 'Messages', icon: MessageSquare },
+          { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessages },
+          { id: 'payments', label: 'Payments', icon: Wallet },
           { id: 'search', label: 'Find Crew', icon: Search },
           { id: 'favorites', label: 'Saved Professionals', icon: Star },
           { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadNotifications },
@@ -202,6 +207,17 @@ export default function CompanyDashboard() {
         </div>
 
         <div className="max-w-[1200px] mx-auto px-4 sm:px-5 py-5 space-y-5">
+          
+          {activeTab === 'payments' && (
+          
+            <div className="animate-fade-in">
+          
+              <CompanyPayments />
+          
+            </div>
+          
+          )}
+
           
           {activeTab === 'messages' && (
             <div className="animate-fade-in -mx-4 sm:-mx-5 -my-5">

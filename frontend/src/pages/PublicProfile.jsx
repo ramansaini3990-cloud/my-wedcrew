@@ -2,12 +2,14 @@ import { useState, useEffect, useContext, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   MapPin, Briefcase, CalendarCheck, ArrowLeft, AlertCircle,
-  Loader2, Camera, CalendarRange, Lock
+  Loader2, Camera, CalendarRange, Lock, AtSign, Video, Users, Globe, ExternalLink,
+  CheckCircle2, MessageSquare
 } from 'lucide-react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import Avatar from '../components/ui/Avatar';
 import AvailabilityBadge from '../components/professionals/AvailabilityBadge';
+import GalleryGrid from '../components/gallery/GalleryGrid';
 
 const fmt = (value, opts = { day: 'numeric', month: 'short', year: 'numeric' }) =>
   value ? new Date(value).toLocaleDateString('en-IN', opts) : '';
@@ -17,6 +19,45 @@ const fmtRange = (start, end) => {
   const s = fmt(start, short);
   const e = fmt(end, short);
   return s === e ? s : `${s} – ${e}`;
+};
+
+/**
+ * Public social profiles. Rendered only from the server-supplied map, which
+ * already drops anything that is not a validated https URL.
+ */
+const SOCIAL_ICONS = {
+  instagram: { Icon: AtSign, label: 'Instagram' },
+  youtube: { Icon: Video, label: 'YouTube' },
+  facebook: { Icon: Users, label: 'Facebook' },
+  linkedin: { Icon: Briefcase, label: 'LinkedIn' },
+  website: { Icon: Globe, label: 'Website' }
+};
+
+const SocialLinks = ({ links }) => {
+  const entries = Object.entries(links || {}).filter(([key, url]) => SOCIAL_ICONS[key] && url);
+  if (!entries.length) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {entries.map(([key, url]) => {
+        const { Icon, label } = SOCIAL_ICONS[key];
+        return (
+          <a
+            key={key}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            aria-label={`${label} (opens in a new tab)`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-2.5 py-1.5 text-[12px] font-medium text-brand-navy transition-colors hover:border-brand-primary hover:text-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          >
+            <Icon size={13} className="text-brand-primary" aria-hidden="true" />
+            {label}
+            <ExternalLink size={11} className="text-brand-muted" aria-hidden="true" />
+          </a>
+        );
+      })}
+    </div>
+  );
 };
 
 const Section = ({ title, children }) => (
@@ -71,6 +112,7 @@ export default function PublicProfile() {
     try {
       await api.post('/api/booking-requests', { freelancer_id: id });
       setBooking({ loading: false, type: 'success', message: 'Booking request sent. You will be notified when they respond.' });
+      load(); // refresh viewer_connection from the server
     } catch (err) {
       setBooking({
         loading: false,
@@ -130,6 +172,10 @@ export default function PublicProfile() {
 
   // Identity fields are withheld server-side without an active subscription.
   const locked = profile.locked === true;
+
+  // Server-derived: whether THIS company is already connected to this
+  // professional. The button reflects backend state - it is not the guard.
+  const connection = profile.viewer_connection || null;
 
   return (
     <div className="bg-brand-bg min-h-screen pt-24 pb-16">
@@ -212,6 +258,18 @@ export default function PublicProfile() {
                 <p className="text-[14px] leading-relaxed text-brand-navy whitespace-pre-line">{profile.bio}</p>
               </Section>
             ) : null}
+
+            {profile.featured_gallery?.length > 0 && (
+              <Section title="Featured Work">
+                <GalleryGrid items={profile.featured_gallery} initialCount={6} />
+              </Section>
+            )}
+
+            {profile.gallery?.length > 0 && (
+              <Section title="Portfolio">
+                <GalleryGrid items={profile.gallery} initialCount={9} />
+              </Section>
+            )}
 
             {(profile.experience_years != null || profile.profession) && (
               <Section title="Experience & Specialisation">
@@ -310,6 +368,21 @@ export default function PublicProfile() {
                     An active subscription is required to view details and send booking requests.
                   </p>
                 </>
+              ) : isCompany && connection?.connected ? (
+                <>
+                  <p className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-green-700">
+                    <CheckCircle2 size={15} aria-hidden="true" /> Connected
+                  </p>
+                  <Link
+                    to="/messages"
+                    className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-brand-primary px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-brand-primaryDark"
+                  >
+                    <MessageSquare size={14} aria-hidden="true" /> Message
+                  </Link>
+                  <p className="mt-2.5 text-[11px] text-brand-textSec">
+                    You are already connected. Messaging requires both accounts to hold an active plan.
+                  </p>
+                </>
               ) : isCompany ? (
                 <>
                   <button
@@ -355,6 +428,13 @@ export default function PublicProfile() {
                 </p>
               )}
             </div>
+
+            {Object.keys(profile.social_links || {}).length > 0 && (
+              <div className="bg-brand-surface rounded-xl border border-brand-border p-5">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-textSec mb-3">Follow</h2>
+                <SocialLinks links={profile.social_links} />
+              </div>
+            )}
 
             <div className="bg-brand-surface rounded-xl border border-brand-border p-5">
               <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-textSec mb-3">Details</h2>

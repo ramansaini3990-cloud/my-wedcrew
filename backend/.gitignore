@@ -2,3 +2,8 @@ node_modules
 .env
 .env.*
 !.env.example
+
+# Locally stored portfolio media (services/uploadService.js).
+# User uploads are runtime data, not source - and they move to object storage
+# once MEDIA_PUBLIC_PREFIX points at a bucket/CDN.
+uploads/

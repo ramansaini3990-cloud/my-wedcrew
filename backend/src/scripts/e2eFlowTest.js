@@ -415,30 +415,42 @@ const run = async () => {
     /* ---------------------------------------------------------------- */
     section('Booking request flow + notifications');
 
-    const booking = await request('POST', '/api/booking-requests', {
+    // Already connected via the accepted application above: a second, general
+    // booking request is redundant and must be refused server-side.
+    const redundant = await request('POST', '/api/booking-requests', {
       token: company.token,
       body: { freelancer_id: freelancer.id }
+    });
+    check('Redundant request to an ALREADY CONNECTED freelancer is blocked',
+      redundant.status === 400 && redundant.data?.code === 'ALREADY_CONNECTED',
+      JSON.stringify(redundant.data).slice(0, 120));
+
+    // The booking lifecycle itself runs against an unconnected freelancer.
+    const bookee = await register('freelancer', 'bookee', { profession: 'Drone Pilot' });
+    const booking = await request('POST', '/api/booking-requests', {
+      token: company.token,
+      body: { freelancer_id: bookee.id }
     });
     check('Company sent a booking request', booking.status === 201, JSON.stringify(booking.data).slice(0, 140));
     const bookingId = booking.data?.requestId;
 
     const dupBooking = await request('POST', '/api/booking-requests', {
       token: company.token,
-      body: { freelancer_id: freelancer.id }
+      body: { freelancer_id: bookee.id }
     });
     check('Duplicate pending booking request blocked', dupBooking.status === 400 && dupBooking.data?.code === 'DUPLICATE_BOOKING_REQUEST');
 
-    const bookingNotifs = await request('GET', '/api/notifications', { token: freelancer.token });
+    const bookingNotifs = await request('GET', '/api/notifications', { token: bookee.token });
     check('Freelancer received "new_booking_request" notification',
       (bookingNotifs.data?.data || []).some((n) => n.type === 'new_booking_request'));
 
-    const freelancerBookings = await request('GET', '/api/booking-requests/freelancer', { token: freelancer.token });
+    const freelancerBookings = await request('GET', '/api/booking-requests/freelancer', { token: bookee.token });
     const found = (freelancerBookings.data?.data || []).find((b) => String(b.id) === String(bookingId));
     check('Booking request visible to freelancer', Boolean(found));
     check('Fixed booking message preserved', found?.message?.startsWith('Hi, we’re interested in connecting'));
 
     const acceptBooking = await request('PUT', `/api/booking-requests/${bookingId}/status`, {
-      token: freelancer.token,
+      token: bookee.token,
       body: { status: 'accepted' }
     });
     check('Freelancer accepted the booking request', acceptBooking.status === 200);
@@ -448,17 +460,18 @@ const run = async () => {
       (acceptNotifs.data?.data || []).some((n) => n.type === 'booking_request_accepted'));
 
     const Conversation = (await import('../models/Conversation.js')).default;
-    const convCount = await Conversation.countDocuments({ company_id: company.id, freelancer_id: freelancer.id });
+    const convCount = await Conversation.countDocuments({ company_id: company.id, freelancer_id: bookee.id });
     check('Booking acceptance did NOT duplicate the conversation', convCount === 1, `found ${convCount}`);
 
-    // Decline path on a second booking request
+    // Decline path, against a third freelancer with no existing relationship.
+    const declinee = await register('freelancer', 'declinee', { profession: 'Video Editor' });
     const booking2 = await request('POST', '/api/booking-requests', {
       token: company.token,
-      body: { freelancer_id: freelancer.id }
+      body: { freelancer_id: declinee.id }
     });
     const booking2Id = booking2.data?.requestId;
     const declineBooking = await request('PUT', `/api/booking-requests/${booking2Id}/status`, {
-      token: freelancer.token,
+      token: declinee.token,
       body: { status: 'declined' }
     });
     check('Freelancer declined a booking request', declineBooking.status === 200);

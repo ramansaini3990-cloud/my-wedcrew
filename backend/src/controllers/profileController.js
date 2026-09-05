@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import { resolveProfileMasterData } from '../services/masterDataService.js';
 import { getUpcomingBlocks } from '../services/availabilityService.js';
 import { logFromRequest } from '../services/activityService.js';
+import { validateSocialLinks } from '../services/mediaEmbedService.js';
 
 /**
  * Role-agnostic profile management for freelancers and companies.
@@ -15,7 +16,7 @@ import { logFromRequest } from '../services/activityService.js';
  */
 
 const PUBLIC_SAFE_FIELDS =
-  'name email phone role city state profession profession_id state_id city_id profile_picture bio experience_years equipment manual_location needs_master_review created_at';
+  'name email phone role city state profession profession_id state_id city_id profile_picture bio experience_years equipment social_links manual_location needs_master_review created_at';
 
 const serialise = (user) => ({
   id: String(user._id),
@@ -37,6 +38,13 @@ const serialise = (user) => ({
   bio: user.bio || '',
   experience_years: user.experience_years ?? null,
   equipment: user.equipment || [],
+  social_links: {
+    instagram: user.social_links?.instagram || '',
+    youtube: user.social_links?.youtube || '',
+    facebook: user.social_links?.facebook || '',
+    linkedin: user.social_links?.linkedin || '',
+    website: user.social_links?.website || ''
+  },
   manual_location: {
     address: user.manual_location?.address || '',
     landmark: user.manual_location?.landmark || '',
@@ -123,6 +131,17 @@ export const updateMyProfile = async (req, res) => {
     if (req.body.equipment !== undefined) {
       const list = Array.isArray(req.body.equipment) ? req.body.equipment : [];
       update.equipment = list.map((i) => String(i).trim()).filter(Boolean).slice(0, 50);
+    }
+
+    // ---- Public social links --------------------------------------------
+    // Merged onto the existing map so updating one platform does not clear
+    // the others. Each URL is host-checked server-side.
+    if (req.body.social_links !== undefined) {
+      const social = validateSocialLinks(req.body.social_links);
+      if (!social.ok) return res.status(400).json(social.error);
+      for (const [key, value] of Object.entries(social.values)) {
+        update[`social_links.${key}`] = value;
+      }
     }
 
     // ---- Manual / shared location ---------------------------------------

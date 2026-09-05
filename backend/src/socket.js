@@ -5,8 +5,9 @@ import Conversation from './models/Conversation.js';
 import User from './models/User.js';
 import Notification from './models/Notification.js';
 import { canChat, SUBSCRIPTION_ERRORS } from './services/subscriptionService.js';
-import { countUnreadForConversation } from './services/chatUnreadService.js';
+import { countUnreadForConversation, countTotalUnread } from './services/chatUnreadService.js';
 import { logActivity } from './services/activityService.js';
+import { socketCorsOptions } from './config/cors.js';
 
 let io;
 const userSockets = new Map(); // userId -> socketId
@@ -55,10 +56,7 @@ const notifyLockedMessage = async (recipientId, senderId, conversationId) => {
 
 export const initSocket = (server) => {
   io = new Server(server, {
-    cors: {
-      origin: '*', // Adjust to frontend URL in production
-      methods: ['GET', 'POST']
-    }
+    cors: socketCorsOptions
   });
 
   io.use((socket, next) => {
@@ -201,9 +199,14 @@ export const initSocket = (server) => {
             // increments, so duplicate events or a socket reconnect can never
             // double-count.
             const unreadCount = await countUnreadForConversation(conversationId, resolvedReceiverId);
+            // totalUnread drives the sidebar "Messages" badge. Sent on the
+            // existing event rather than a new one, and absolute rather than a
+            // delta, so a reconnect or duplicate event cannot skew the badge.
+            const totalUnread = await countTotalUnread(resolvedReceiverId);
             io.to(receiverSocketId).emit('conversation_unread', {
               conversationId: String(conversationId),
               unreadCount,
+              totalUnread,
               lastMessageAt: message.createdAt
             });
             // Retained for backward compatibility with existing listeners.

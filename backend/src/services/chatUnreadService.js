@@ -80,8 +80,23 @@ export const markConversationRead = async (conversationId, userId) => {
   return result.modifiedCount || 0;
 };
 
+
+/**
+ * Total unread messages for a user across every conversation.
+ *
+ * Powers the sidebar "Messages" badge. Computed from the same `read_at`
+ * field as the per-conversation counts, so the badge and the conversation
+ * list can never disagree.
+ */
+export const countTotalUnread = async (userId) => {
+  const receiverId = toObjectId(userId);
+  if (!receiverId) return 0;
+  return Message.countDocuments({ receiver_id: receiverId, read_at: null });
+};
+
 export default {
   countUnreadForConversation,
+  countTotalUnread,
   getUnreadCountsByConversation,
   markConversationRead
 };

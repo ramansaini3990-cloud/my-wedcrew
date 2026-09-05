@@ -1,4 +1,5 @@
 import AvailabilityBlock, { BOOKABLE_STATUSES } from '../models/AvailabilityBlock.js';
+import GalleryItem from '../models/GalleryItem.js';
 import { hasActiveSubscription } from './subscriptionService.js';
 
 /**
@@ -15,7 +16,7 @@ import { hasActiveSubscription } from './subscriptionService.js';
 
 /** Fields safe to `.select()` from the User collection for public consumption. */
 export const PUBLIC_PROFESSIONAL_FIELDS =
-  'name city state profession profession_id state_id city_id profile_picture bio experience_years equipment created_at';
+  'name city state profession profession_id state_id city_id profile_picture bio experience_years equipment social_links created_at';
 
 const startOfToday = () => {
   const d = new Date();
@@ -86,6 +87,7 @@ export const toPublicProfessional = (user, blocks = []) => {
     bio: user.bio || null,
     experience_years: typeof user.experience_years === 'number' ? user.experience_years : null,
     equipment: Array.isArray(user.equipment) ? user.equipment : [],
+    social_links: publicSocialLinks(user.social_links),
 
     current_availability: deriveCurrentAvailability(blocks),
     upcoming_availability: upcoming,
@@ -140,6 +142,8 @@ export const toLockedProfessional = (user, blocks = []) => {
     profile_picture: null,
     bio: null,
     equipment: [],
+    // Social handles identify the professional, so they are withheld too.
+    social_links: {},
 
     // Non-identifying discovery data stays visible.
     profession: user.profession_id?.name || user.profession || null,
@@ -157,11 +161,78 @@ export const toLockedProfessional = (user, blocks = []) => {
   };
 };
 
+
+/**
+ * Only non-empty social URLs are published, and only from the known keys.
+ * A value that somehow reached the database without passing validation is
+ * dropped here rather than being handed to the browser.
+ */
+const SOCIAL_OUT_KEYS = ['instagram', 'youtube', 'facebook', 'linkedin', 'website'];
+
+export const publicSocialLinks = (links) => {
+  const out = {};
+  if (!links) return out;
+  for (const key of SOCIAL_OUT_KEYS) {
+    const value = String(links[key] || '').trim();
+    if (value && value.toLowerCase().startsWith('https://')) out[key] = value;
+  }
+  return out;
+};
+
+/**
+ * Public DTO for one gallery item.
+ *
+ * `embed_url` and `thumbnail_url` were derived server-side by
+ * mediaEmbedService from an allow-listed host, so the client can use them
+ * directly. Nothing owner-only (moderation reason, ordering internals) is
+ * included.
+ */
+/**
+ * Items saved before the reel viewer landed hold `/embed/captioned/`, whose
+ * caption block makes the embed taller than any viewport. Normalising on read
+ * fixes those rows without touching stored data or running a migration.
+ */
+export const normaliseEmbedUrl = (url) =>
+  typeof url === 'string' && url.includes('/embed/captioned/')
+    ? url.replace('/embed/captioned/', '/embed/')
+    : url || null;
+
+export const toPublicGalleryItem = (item) => ({
+  id: String(item._id || item.id),
+  media_type: item.media_type,
+  source_type: item.source_type,
+  title: item.title,
+  description: item.description || '',
+  category: item.category || '',
+  media_url: item.media_url,
+  thumbnail_url: item.thumbnail_url || null,
+  embed_url: normaliseEmbedUrl(item.embed_url),
+  featured: Boolean(item.featured),
+  created_at: item.created_at
+});
+
+/**
+ * Loads a professional's publicly visible gallery.
+ *
+ * Admin-hidden items are excluded by the query itself, so a moderated item can
+ * never reach a public response.
+ */
+export const loadPublicGallery = async (userId, { limit = 60 } = {}) => {
+  const items = await GalleryItem.find({ user_id: userId, is_hidden: { $ne: true } })
+    .sort({ display_order: 1, created_at: -1 })
+    .limit(Math.min(limit, 120))
+    .lean();
+  return items.map(toPublicGalleryItem);
+};
+
 export default {
   PUBLIC_PROFESSIONAL_FIELDS,
   canViewProfessionalDetails,
   toLockedProfessional,
   toPublicProfessional,
+  toPublicGalleryItem,
+  loadPublicGallery,
+  publicSocialLinks,
   deriveCurrentAvailability,
   serialiseUpcoming,
   loadPublicBlocks
