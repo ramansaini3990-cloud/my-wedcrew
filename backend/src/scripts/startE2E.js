@@ -17,9 +17,14 @@
  *     The suites use @e2e.local addresses. That domain has no MX record, so
  *     signup would be rejected with DOMAIN_CANNOT_RECEIVE_MAIL - correctly.
  *
- *   RATE_LIMIT_AUTH_MAX / RATE_LIMIT_API_MAX
+ *   RATE_LIMIT_AUTH_MAX / RATE_LIMIT_API_MAX / RATE_LIMIT_PAYMENT_MAX
  *     authLimiter allows 10 auth calls per 15 minutes. A single suite makes
  *     dozens, so runs two onwards died on 429 "Admin login failed".
+ *
+ *     paymentLimiter allows 20 payment calls per 15 minutes, which is fine for
+ *     one pass but not for re-running the payment suite while investigating a
+ *     failure - the third run in a window died on RATE_LIMITED half way through
+ *     and looked exactly like a real regression.
  *
  * THIS MUST NEVER BE THE DEFAULT START COMMAND. `npm start` stays untouched.
  * As a second line of defence, verificationRequired() in authController.js
@@ -41,7 +46,8 @@ const OVERRIDES = {
   EMAIL_MX_CHECK_ENABLED: 'false',
   EMAIL_PROVIDER: 'console',
   RATE_LIMIT_AUTH_MAX: '100000',
-  RATE_LIMIT_API_MAX: '1000000'
+  RATE_LIMIT_API_MAX: '1000000',
+  RATE_LIMIT_PAYMENT_MAX: '100000'
 };
 
 for (const [key, value] of Object.entries(OVERRIDES)) {

@@ -432,19 +432,19 @@ export default function FreelancerDashboard() {
                 ))}
               </div>
 
-              {/* Profile Status Card */}
-              <div className="bg-brand-surface rounded-xl border border-brand-primary/20 p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-sm">
-                <div className="absolute top-0 left-0 w-1 h-full bg-brand-primary"></div>
-                <div>
-                  <h3 className="text-lg font-serif font-bold text-brand-navy mb-1">Signature Membership Active</h3>
-                  <p className="text-sm text-brand-textSec max-w-md">
-                    You are currently enjoying priority listing and unlimited booking responses. Your plan renews soon.
-                  </p>
-                </div>
-                <button className="px-6 py-2.5 bg-brand-bg border border-brand-primary text-brand-primary text-sm font-medium rounded-lg hover:bg-brand-primary/5 transition-colors whitespace-nowrap">
-                  Manage Subscription
-                </button>
-              </div>
+              {/* A hardcoded "Signature Membership Active" panel used to sit
+                  here. It claimed the account had priority listing and a plan
+                  renewing soon, with a Manage Subscription button that had no
+                  handler - none of it was wired to anything. On an account with
+                  no plan it directly contradicted the SubscriptionStatusCard
+                  above, which reads the real state from
+                  GET /api/subscriptions/me and correctly showed
+                  "No Plan / not subscribed / Chat: Locked".
+
+                  Removed rather than wired up, for the same reason the fake
+                  42/18/4.9 stats were: telling somebody they have a membership
+                  they have not paid for is worse than showing nothing. The
+                  subscription card is now the single answer on this page. */}
             </div>
           )}
 

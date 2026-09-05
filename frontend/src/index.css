@@ -60,11 +60,86 @@
 }
 
 
-/* ------------------------------------------------------------------
-   Admin dashboard shell
-   Scoped to .admin-shell so the public/marketing pages keep their
-   existing Playfair Display headings untouched.
+/* ==================================================================
+   ADMIN PANEL THEME
+   ==================================================================
+
+   The admin panel is an operational surface, not a marketing one. It gets
+   a cool grey ground, a deep blue accent and Inter throughout, so an
+   operator can tell at a glance that they are administering the platform
+   rather than browsing it.
+
+   SCOPING
+   Everything below is prefixed with `.admin-shell`, the class on the root
+   element of components/admin/AdminLayout.jsx. Nothing here can reach the
+   public site, the freelancer dashboard or the company dashboard, and the
+   brand.* tokens in tailwind.config.js are deliberately untouched - those
+   drive the whole site.
+
+   HOW THE REMAP WORKS
+   85% of admin colour already goes through brand.* utilities (541 uses vs
+   94 hardcoded), so rather than editing ~550 class names across 14 files,
+   the generated utilities are re-pointed inside the shell. A rule like
+   `.admin-shell .text-brand-primary` has specificity (0,2,0) and beats
+   Tailwind's own `.text-brand-primary` (0,1,0), so the same markup paints
+   admin blue inside the shell and brand orange everywhere else.
+
+   The full list was extracted mechanically from the admin sources - 32
+   plain utilities plus 15 that only ever appear behind a hover/focus
+   variant - so no admin colour is left unmapped.
+
+   CONTRAST (WCAG AA, measured against the surfaces each colour sits on)
+                            on #EAEEF4 page    on #FFFFFF card
+     text      #101828          15.24:1            17.75:1
+     textSec   #475569           6.51:1             7.58:1
+     muted     #616C7E           4.56:1             5.31:1
+     accent    #1D4ED8           5.76:1             6.70:1
+     success   #166534           6.12:1             7.13:1
+     amber     #92400E           6.09:1             7.09:1
+     danger    #B42318           5.65:1             6.57:1
+     orange    #C2410C           4.45:1             5.18:1
+   Every value used for normal text clears 4.5:1 on the surface it is
+   actually painted on.
    ------------------------------------------------------------------ */
+
+.admin-shell {
+  /* Ground and structure */
+  --admin-bg: #EAEEF4;              /* cool neutral grey, not the warm public beige */
+  --admin-surface: #FFFFFF;
+  --admin-surface-rgb: 255 255 255;
+  --admin-border: #D8DEE8;
+  --admin-border-rgb: 216 222 232;
+
+  /* Type */
+  --admin-text: #101828;
+  --admin-text-rgb: 16 24 40;
+  --admin-text-sec: #475569;
+  --admin-text-sec-rgb: 71 85 105;
+  --admin-muted: #616C7E;
+
+  /* Primary accent - deep blue. Replaces burnt orange as the admin accent. */
+  --admin-accent: #1D4ED8;
+  --admin-accent-rgb: 29 78 216;
+  --admin-accent-dark: #1E3A8A;
+
+  /* Semantic */
+  --admin-success: #166534;         /* active / confirmed */
+  --admin-success-rgb: 22 101 52;
+  --admin-amber: #92400E;           /* pending / dispute */
+  --admin-danger: #B42318;          /* failed / suspended */
+
+  /* RESERVED. Orange is no longer decoration in admin - it is a signal.
+     Used only by .admin-warning and .admin-destructive below, so when an
+     operator sees orange in the finance or moderation panels it means
+     "this needs care", not "this is a button". */
+  --admin-orange: #C2410C;
+  --admin-orange-rgb: 194 65 12;
+
+  background-color: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+/* ---- Typography ------------------------------------------------- */
 .admin-shell,
 .admin-shell h1,
 .admin-shell h2,
@@ -84,11 +159,149 @@
   letter-spacing: -0.018em;
 }
 
+/* Playfair is the public brand face and is wrong for dense operational
+   screens. This catches any `font-serif` inside the shell - including the
+   sidebar wordmark - so admin is Inter throughout without needing every
+   call site edited. */
+.admin-shell .font-serif {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
 /* Tabular figures keep numeric columns aligned in stat cards and tables. */
 .admin-shell .tabular-nums,
 .admin-shell table td,
 .admin-shell table th {
   font-variant-numeric: tabular-nums;
+}
+
+/* ---- Backgrounds ------------------------------------------------- */
+.admin-shell.bg-brand-bg,
+.admin-shell .bg-brand-bg { background-color: var(--admin-bg); }
+.admin-shell .bg-brand-surface { background-color: var(--admin-surface); }
+.admin-shell .bg-brand-surface\/50 { background-color: rgb(var(--admin-surface-rgb) / 0.5); }
+.admin-shell .bg-brand-border { background-color: var(--admin-border); }
+.admin-shell .bg-brand-muted { background-color: var(--admin-muted); }
+.admin-shell .bg-brand-primary { background-color: var(--admin-accent); }
+.admin-shell .bg-brand-primary\/10 { background-color: rgb(var(--admin-accent-rgb) / 0.1); }
+.admin-shell .bg-brand-success { background-color: var(--admin-success); }
+.admin-shell .bg-brand-success\/10 { background-color: rgb(var(--admin-success-rgb) / 0.1); }
+.admin-shell .bg-brand-navy\/40 { background-color: rgb(var(--admin-text-rgb) / 0.4); }
+.admin-shell .bg-brand-navy\/50 { background-color: rgb(var(--admin-text-rgb) / 0.5); }
+
+.admin-shell .hover\:bg-brand-primary\/5:hover { background-color: rgb(var(--admin-accent-rgb) / 0.05); }
+.admin-shell .hover\:bg-brand-primary\/10:hover { background-color: rgb(var(--admin-accent-rgb) / 0.1); }
+.admin-shell .hover\:bg-brand-primary\/15:hover { background-color: rgb(var(--admin-accent-rgb) / 0.15); }
+.admin-shell .hover\:bg-brand-primaryDark:hover { background-color: var(--admin-accent-dark); }
+
+/* ---- Text -------------------------------------------------------- */
+.admin-shell.text-brand-text,
+.admin-shell .text-brand-text { color: var(--admin-text); }
+.admin-shell .text-brand-navy { color: var(--admin-text); }
+.admin-shell .text-brand-navy\/55 { color: rgb(var(--admin-text-rgb) / 0.55); }
+.admin-shell .text-brand-textSec { color: var(--admin-text-sec); }
+.admin-shell .text-brand-textSec\/40 { color: rgb(var(--admin-text-sec-rgb) / 0.4); }
+.admin-shell .text-brand-muted { color: var(--admin-muted); }
+.admin-shell .text-brand-primary { color: var(--admin-accent); }
+.admin-shell .text-brand-success { color: var(--admin-success); }
+.admin-shell .text-brand-danger { color: var(--admin-danger); }
+.admin-shell .text-brand-border { color: var(--admin-border); }
+
+.admin-shell .hover\:text-brand-primary:hover { color: var(--admin-accent); }
+.admin-shell .hover\:text-brand-danger:hover { color: var(--admin-danger); }
+
+/* ---- Borders ----------------------------------------------------- */
+.admin-shell .border-brand-border { border-color: var(--admin-border); }
+.admin-shell .border-brand-border\/60 { border-color: rgb(var(--admin-border-rgb) / 0.6); }
+.admin-shell .border-brand-primary { border-color: var(--admin-accent); }
+.admin-shell .border-brand-primary\/20 { border-color: rgb(var(--admin-accent-rgb) / 0.2); }
+.admin-shell .border-brand-primary\/25 { border-color: rgb(var(--admin-accent-rgb) / 0.25); }
+.admin-shell .border-brand-primary\/30 { border-color: rgb(var(--admin-accent-rgb) / 0.3); }
+.admin-shell .border-brand-primary\/40 { border-color: rgb(var(--admin-accent-rgb) / 0.4); }
+.admin-shell .border-brand-success\/20 { border-color: rgb(var(--admin-success-rgb) / 0.2); }
+
+.admin-shell .hover\:border-brand-primary:hover { border-color: var(--admin-accent); }
+.admin-shell .hover\:border-brand-primary\/30:hover { border-color: rgb(var(--admin-accent-rgb) / 0.3); }
+.admin-shell .hover\:border-brand-primary\/40:hover { border-color: rgb(var(--admin-accent-rgb) / 0.4); }
+.admin-shell .focus\:border-brand-primary:focus { border-color: var(--admin-accent); }
+.admin-shell .focus-within\:border-brand-primary:focus-within { border-color: var(--admin-accent); }
+
+/* Tailwind's divide-* emits a sibling selector, so the override has to
+   match the same shape to win. */
+.admin-shell .divide-brand-border > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--admin-border);
+}
+
+/* ---- Rings and placeholders -------------------------------------- */
+.admin-shell .ring-brand-surface { --tw-ring-color: var(--admin-surface); }
+.admin-shell .ring-brand-primary { --tw-ring-color: var(--admin-accent); }
+.admin-shell .focus-visible\:ring-brand-primary:focus-visible { --tw-ring-color: var(--admin-accent); }
+.admin-shell .focus\:ring-brand-primary\/20:focus { --tw-ring-color: rgb(var(--admin-accent-rgb) / 0.2); }
+.admin-shell .focus\:ring-brand-primary\/25:focus { --tw-ring-color: rgb(var(--admin-accent-rgb) / 0.25); }
+.admin-shell .focus-within\:ring-brand-primary\/25:focus-within { --tw-ring-color: rgb(var(--admin-accent-rgb) / 0.25); }
+.admin-shell .placeholder-brand-muted::placeholder { color: var(--admin-muted); }
+
+/* ---- Semantic status colours ------------------------------------- */
+/* The status badges across Finance, Subscriptions and Activity use raw
+   Tailwind palette steps. They are re-pointed at the admin semantics so
+   green/amber/red mean the same thing on every admin page. */
+.admin-shell .text-green-600,
+.admin-shell .text-green-700,
+.admin-shell .text-green-800 { color: var(--admin-success); }
+.admin-shell .border-green-200 { border-color: rgb(var(--admin-success-rgb) / 0.25); }
+.admin-shell .bg-green-50 { background-color: rgb(var(--admin-success-rgb) / 0.07); }
+.admin-shell .bg-green-100 { background-color: rgb(var(--admin-success-rgb) / 0.12); }
+
+.admin-shell .text-yellow-700,
+.admin-shell .text-amber-700 { color: var(--admin-amber); }
+.admin-shell .border-yellow-200,
+.admin-shell .border-amber-200 { border-color: rgb(146 64 14 / 0.25); }
+.admin-shell .bg-yellow-50,
+.admin-shell .bg-amber-50 { background-color: rgb(146 64 14 / 0.07); }
+.admin-shell .bg-yellow-100 { background-color: rgb(146 64 14 / 0.12); }
+
+.admin-shell .text-red-600,
+.admin-shell .text-red-700 { color: var(--admin-danger); }
+.admin-shell .border-red-200 { border-color: rgb(180 35 24 / 0.25); }
+.admin-shell .border-red-300 { border-color: rgb(180 35 24 / 0.4); }
+.admin-shell .bg-red-50 { background-color: rgb(180 35 24 / 0.07); }
+.admin-shell .bg-red-100 { background-color: rgb(180 35 24 / 0.12); }
+.admin-shell .hover\:bg-red-50:hover { background-color: rgb(180 35 24 / 0.07); }
+
+/* ---- Reserved orange --------------------------------------------- */
+/* Opt-in only. Applied by hand in the JSX at the two places orange now
+   carries meaning: a warning banner, and a destructive confirmation. */
+.admin-shell .admin-warning {
+  color: var(--admin-orange);
+  background-color: rgb(var(--admin-orange-rgb) / 0.07);
+  border-color: rgb(var(--admin-orange-rgb) / 0.3);
+}
+.admin-shell .admin-destructive {
+  color: var(--admin-orange);
+  border-color: rgb(var(--admin-orange-rgb) / 0.4);
+}
+.admin-shell .admin-destructive:hover {
+  background-color: rgb(var(--admin-orange-rgb) / 0.08);
+}
+
+/* ---- Density ------------------------------------------------------ */
+/* A modest tightening so more rows fit, not a squeeze. Scoped to table
+   cells and card padding so empty-state blocks (p-12) keep their air. */
+.admin-shell table td.py-3,
+.admin-shell table th.py-3 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.admin-shell table td.py-2\.5,
+.admin-shell table th.py-2\.5 { padding-top: 0.4375rem; padding-bottom: 0.4375rem; }
+.admin-shell table td.py-6,
+.admin-shell table th.py-6 { padding-top: 1rem; padding-bottom: 1rem; }
+.admin-shell table td.px-4,
+.admin-shell table th.px-4 { padding-left: 0.875rem; padding-right: 0.875rem; }
+
+/* Cards only - `.rounded-xl` is what every admin panel wrapper carries. */
+.admin-shell .rounded-xl.p-4 { padding: 0.875rem; }
+.admin-shell .rounded-xl.p-5 { padding: 1.125rem; }
+
+/* Cards sit on grey, so they need a border and only the faintest lift. */
+.admin-shell .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgb(var(--admin-text-rgb) / 0.04);
 }
 
 html {

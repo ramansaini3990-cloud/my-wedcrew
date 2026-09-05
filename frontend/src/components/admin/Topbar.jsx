@@ -3,6 +3,46 @@ import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
+/**
+ * Which deployment is this panel pointed at?
+ *
+ * Local and production admin panels are pixel-identical, and the actions in
+ * here delete real accounts and move real money. The badge exists so an
+ * operator can never mistake one for the other.
+ *
+ * Deliberately absent when VITE_ENV_LABEL is unset, so it never shows up in
+ * production unless somebody configured it on purpose - a badge that appears
+ * by default would be ignored within a week.
+ */
+const ENV_LABEL = String(import.meta.env.VITE_ENV_LABEL || '').trim();
+
+const ENV_TONES = {
+  production: 'border-red-300 bg-red-50 text-red-700',
+  prod: 'border-red-300 bg-red-50 text-red-700',
+  live: 'border-red-300 bg-red-50 text-red-700',
+  staging: 'border-amber-300 bg-amber-50 text-amber-700',
+  stage: 'border-amber-300 bg-amber-50 text-amber-700',
+  qa: 'border-amber-300 bg-amber-50 text-amber-700',
+  local: 'border-brand-border bg-brand-bg text-brand-textSec',
+  development: 'border-brand-border bg-brand-bg text-brand-textSec',
+  dev: 'border-brand-border bg-brand-bg text-brand-textSec'
+};
+
+const EnvironmentBadge = () => {
+  if (!ENV_LABEL) return null;
+
+  const tone = ENV_TONES[ENV_LABEL.toLowerCase()] || 'border-brand-border bg-brand-bg text-brand-textSec';
+
+  return (
+    <span
+      className={`hidden sm:inline-flex shrink-0 items-center rounded-md border px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] ${tone}`}
+      title={`Admin panel is pointed at: ${ENV_LABEL}`}
+    >
+      {ENV_LABEL}
+    </span>
+  );
+};
+
 const Topbar = ({ sidebarOpen, setSidebarOpen }) => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -24,6 +64,8 @@ const Topbar = ({ sidebarOpen, setSidebarOpen }) => {
         >
           <Menu size={20} />
         </button>
+
+        <EnvironmentBadge />
 
         {/* Search */}
         <div className="hidden md:flex items-center gap-2 bg-brand-bg border border-brand-border rounded-lg px-3 h-9 focus-within:ring-2 focus-within:ring-brand-primary/25 focus-within:border-brand-primary transition-all">

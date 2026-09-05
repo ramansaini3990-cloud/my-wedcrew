@@ -154,8 +154,11 @@ export default function MasterData() {
 
   const remove = async (row) => {
     if (row.usage?.total > 0) {
+      // Not an error - the guard did its job. It is a warning that the action
+      // was refused and there is a safe alternative, so it gets the reserved
+      // admin orange rather than the red used for genuine failures.
       setFeedback({
-        type: 'error',
+        type: 'warning',
         message: `"${row.name}" is in use and cannot be deleted. Deactivate it instead.`
       });
       return;
@@ -225,7 +228,9 @@ export default function MasterData() {
           className={`flex items-start gap-2 rounded-lg border p-3 text-[13px] ${
             feedback.type === 'success'
               ? 'border-green-200 bg-green-50 text-green-800'
-              : 'border-red-200 bg-red-50 text-brand-danger'
+              : feedback.type === 'warning'
+                ? 'admin-warning'
+                : 'border-red-200 bg-red-50 text-brand-danger'
           }`}
           role="status"
         >

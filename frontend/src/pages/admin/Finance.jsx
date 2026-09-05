@@ -103,7 +103,7 @@ export default function Finance() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-serif text-xl font-bold text-brand-navy">Finance</h1>
+        <h1 className="text-xl font-bold text-brand-navy">Finance</h1>
         <p className="mt-0.5 text-[12.5px] text-brand-textSec">Payments, withdrawals, cash disputes and platform fee.</p>
       </div>
 
@@ -138,6 +138,17 @@ export default function Finance() {
 
       <section className="rounded-xl border border-brand-border bg-brand-surface p-4 sm:p-5">
         {error && <Feedback type="error">{error}</Feedback>}
+
+        {/* Reserved orange. Resolving a dispute settles or reverses real money
+            and there is no undo in this panel, so it is flagged rather than
+            left looking like an ordinary table action. This is one of only two
+            places orange appears in admin - see .admin-warning in index.css. */}
+        {tab === 'disputes' && !loading && rows.length > 0 && (
+          <p className="admin-warning mb-3 flex items-start gap-2 rounded-lg border p-3 text-[12.5px]">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+            Confirming or rejecting a dispute settles the payment immediately and cannot be undone from this panel.
+          </p>
+        )}
 
         {tab === 'settings' ? (
           <form onSubmit={saveFee} className="max-w-sm space-y-3">

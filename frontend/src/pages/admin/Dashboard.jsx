@@ -109,14 +109,14 @@ const Dashboard = () => {
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={stats?.charts?.userGrowth || []} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8DEE8" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12}} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 10px 25px -5px rgba(11, 24, 53, 0.15)', color: '#0B1835' }}
-                  itemStyle={{ color: '#DE601E' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #D8DEE8', boxShadow: '0 10px 25px -5px rgba(16, 24, 40, 0.10)', color: '#101828' }}
+                  itemStyle={{ color: '#1D4ED8' }}
                 />
-                <Line type="monotone" dataKey="users" stroke="#DE601E" strokeWidth={3} dot={{r: 4, fill: '#DE601E', strokeWidth: 2, stroke: '#FFFFFF'}} activeDot={{r: 6}} />
+                <Line type="monotone" dataKey="users" stroke="#1D4ED8" strokeWidth={3} dot={{r: 4, fill: '#1D4ED8', strokeWidth: 2, stroke: '#FFFFFF'}} activeDot={{r: 6}} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -128,15 +128,15 @@ const Dashboard = () => {
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats?.charts?.revenueGrowth || []} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D8DEE8" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 12}} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 10px 25px -5px rgba(11, 24, 53, 0.15)', color: '#0B1835' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #D8DEE8', boxShadow: '0 10px 25px -5px rgba(16, 24, 40, 0.10)', color: '#101828' }}
                   cursor={{fill: 'rgba(222, 96, 30, 0.06)'}}
-                  itemStyle={{ color: '#DE601E' }}
+                  itemStyle={{ color: '#1D4ED8' }}
                 />
-                <Bar dataKey="revenue" fill="#DE601E" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Bar dataKey="revenue" fill="#1D4ED8" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
