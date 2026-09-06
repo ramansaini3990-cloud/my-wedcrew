@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   CalendarDays, Loader2, AlertCircle, Trash2, X, Check,
   Eye, EyeOff, MapPin, List, Plus
@@ -55,6 +55,8 @@ export default function AvailabilityManager({ baseLocation = null }) {
   const [conflicts, setConflicts] = useState([]);
   const [notice, setNotice] = useState('');
   const [showList, setShowList] = useState(false);
+  const [jumpTo, setJumpTo] = useState(null);   // { iso, seq } - moves the grid
+  const jumpSeq = useRef(0);
 
   const master = useMasterData(form.state_id || null);
 
@@ -138,6 +140,9 @@ export default function AvailabilityManager({ baseLocation = null }) {
 
   /* ---------------- form ---------------- */
 
+  // `null` arrives when the calendar drops a selection - Clear, or a tap that
+  // starts a fresh range. The form must close with it rather than keep editing
+  // dates that are no longer highlighted.
   const openCreate = (range) => {
     setEditing(null);
     setSelection(range);
@@ -166,6 +171,36 @@ export default function AvailabilityManager({ baseLocation = null }) {
     setForm(emptyForm);
     setFormError('');
     setConflicts([]);
+  };
+
+  /* ---------------- typed dates ---------------- */
+
+  const minDate = useMemo(() => toISODate(new Date()), []);
+
+  /**
+   * The from/to inputs feed the SAME selection the calendar draws - they are a
+   * second way in, not a second form. A whole month or six weeks is miserable
+   * to drag and trivial to type, but you still see the result highlighted
+   * before you publish.
+   *
+   * `min` on the input handles the picker; this handles a typed or pasted past
+   * date, which `min` does not block.
+   */
+  const setBound = (which, value) => {
+    if (!value || value < minDate) return;
+    jumpSeq.current += 1;
+    setJumpTo({ iso: value, seq: jumpSeq.current });
+
+    const cur = selection || {};
+    const next = which === 'start'
+      ? { start: value, end: cur.end && cur.end >= value ? cur.end : value }
+      : { start: cur.start && cur.start <= value ? cur.start : value, end: value };
+
+    setEditing(null);
+    setForm(emptyForm);
+    setFormError('');
+    setConflicts([]);
+    setSelection(next);
   };
 
   const submit = async (e) => {
@@ -235,7 +270,7 @@ export default function AvailabilityManager({ baseLocation = null }) {
       <div>
         <h2 className="text-2xl font-serif font-bold text-brand-navy">Manage Availability</h2>
         <p className="text-brand-textSec text-sm mt-1">
-          Tap a day, or drag across several, to publish where you are and whether you can be hired.
+          Publish where you are and whether you can be hired — a single day or a whole range at a time.
         </p>
       </div>
 
@@ -327,13 +362,46 @@ export default function AvailabilityManager({ baseLocation = null }) {
               </button>
             </div>
           ) : (
-            <AvailabilityCalendar
-              blocks={blocks}
-              selection={selection}
-              onSelect={openCreate}
-              onBlockClick={openEdit}
-              disabled={saving}
-            />
+            <>
+              <AvailabilityCalendar
+                blocks={blocks}
+                selection={selection}
+                jumpTo={jumpTo}
+                onSelect={openCreate}
+                onBlockClick={openEdit}
+                disabled={saving}
+              />
+
+              {/* Secondary input. Long ranges are faster typed than dragged. */}
+              <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-brand-border pt-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-textSec">
+                  Or type dates
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label htmlFor="av-from" className="sr-only">From date</label>
+                  <input
+                    id="av-from"
+                    type="date"
+                    value={selection?.start || ''}
+                    min={minDate}
+                    onChange={(e) => setBound('start', e.target.value)}
+                    disabled={saving}
+                    className="rounded-lg border border-brand-border bg-brand-surface px-2 py-1 text-[12.5px] text-brand-navy focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/25"
+                  />
+                  <span className="text-[12px] text-brand-textSec">to</span>
+                  <label htmlFor="av-to" className="sr-only">To date</label>
+                  <input
+                    id="av-to"
+                    type="date"
+                    value={selection?.end || ''}
+                    min={selection?.start || minDate}
+                    onChange={(e) => setBound('end', e.target.value)}
+                    disabled={saving}
+                    className="rounded-lg border border-brand-border bg-brand-surface px-2 py-1 text-[12.5px] text-brand-navy focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/25"
+                  />
+                </div>
+              </div>
+            </>
           )}
         </section>
 
@@ -346,7 +414,7 @@ export default function AvailabilityManager({ baseLocation = null }) {
               </span>
               <p className="text-[13.5px] font-semibold text-brand-navy">Nothing selected</p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-brand-textSec">
-                Tap a free day, or drag across a range, to publish your status and location for it.
+                Choose days on the calendar to publish your status and location for them.
                 Tap a coloured day to edit the block it belongs to.
               </p>
             </div>

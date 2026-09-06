@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 // Helpers live in their own module so this file exports only a component.
 import { toISODate, blockDateToISO, STATUS_META } from './availabilityConstants';
 
@@ -10,11 +10,25 @@ import { toISODate, blockDateToISO, STATUS_META } from './availabilityConstants'
  * is range selection over blocks, which off-the-shelf pickers do not model, and
  * the project has no date library to build on.
  *
- * SELECTION
- * Pointer events cover mouse, pen and touch in one path, so drag-to-select
- * works on a phone without a second implementation. `touch-action: none` on the
- * grid stops the browser scrolling the page mid-drag. A plain click is just a
- * drag of length one, so single-day selection needs no special case.
+ * TWO WAYS TO SELECT A RANGE, and they must not fight each other.
+ *
+ *   drag        press a day, move across days, release. Fast with a mouse.
+ *   tap -> tap  tap the first day, tap the last. Works on any screen, and is
+ *               the only method that can span a month boundary, because you can
+ *               navigate months between the two taps.
+ *
+ * A press is classified only on RELEASE: if the pointer visited another day it
+ * was a drag and commits the range; if it never left the day it was a tap. That
+ * single rule is what stops a drag being misread as two taps, and a tap from
+ * starting a phantom drag - no timers, no distance threshold.
+ *
+ * THE DRAG STATE LIVES IN A REF, not just in state. Pointer handlers close over
+ * the render that installed them, so a fast swipe whose first pointermove
+ * arrives before React re-renders used to read `drag` as null and drop the
+ * gesture - the range silently collapsed to one day. Measured on a phone
+ * viewport: a slow drag across five cells worked, the same drag as one coarse
+ * movement selected one day. The ref is read fresh every event; state only
+ * mirrors it for rendering.
  *
  * DATES ARE HANDLED AS PLAIN YYYY-MM-DD STRINGS. The API stores midnight UTC;
  * building local Date objects and converting would shift days for anyone east
@@ -40,9 +54,20 @@ const buildGrid = (year, month) => {
   return cells;
 };
 
+const monthOf = (isoDay) => {
+  const [y, m] = isoDay.split('-');
+  return { year: Number(y), month: Number(m) - 1 };
+};
+
+const shortDate = (isoDay) =>
+  new Date(`${isoDay}T00:00:00Z`).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', timeZone: 'UTC'
+  });
+
 export default function AvailabilityCalendar({
   blocks = [],
   selection = null,
+  jumpTo = null,
   onSelect,
   onBlockClick,
   disabled = false
@@ -53,8 +78,21 @@ export default function AvailabilityCalendar({
     return { year: now.getFullYear(), month: now.getMonth() };
   });
 
-  const [drag, setDrag] = useState(null); // { anchor, current }
+  // Tap-to-tap: the first tap parks here until the second tap closes the range.
+  // Deliberately independent of `cursor`, so navigating months keeps it alive -
+  // that is what makes 28 Sep -> 5 Oct selectable at all.
+  const [pendingStart, setPendingStart] = useState(null);
+  const [hoverDay, setHoverDay] = useState(null);
+
+  const dragRef = useRef(null);          // { anchor, current, moved } - authoritative
+  const [dragView, setDragView] = useState(null);  // mirror, for rendering only
   const gridRef = useRef(null);
+
+  /** Pointer coarseness decides the wording of the hint, nothing else. */
+  const coarsePointer = useMemo(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return false;
+    return window.matchMedia('(pointer: coarse)').matches;
+  }, []);
 
   /** date string -> the block covering it. Built once per blocks change. */
   const byDate = useMemo(() => {
@@ -74,52 +112,117 @@ export default function AvailabilityCalendar({
 
   const cells = useMemo(() => buildGrid(cursor.year, cursor.month), [cursor]);
 
-  const inSelection = useCallback((iso) => {
-    const range = drag
-      ? [drag.anchor, drag.current].sort()
-      : selection && selection.start
-        ? [selection.start, selection.end || selection.start].sort()
-        : null;
-    if (!range) return false;
-    return iso >= range[0] && iso <= range[1];
-  }, [drag, selection]);
-
-  /* ---------------- pointer selection ---------------- */
-
   const isPast = useCallback((iso) => iso < today, [today]);
 
-  const beginDrag = (iso) => {
+  /**
+   * The range being shown, in priority order: an active drag, then a pending
+   * tap-start previewing towards the hovered day, then the committed selection.
+   */
+  const activeRange = useMemo(() => {
+    if (dragView) return [dragView.anchor, dragView.current].sort();
+    if (pendingStart) {
+      const other = hoverDay || pendingStart;
+      return [pendingStart, other].sort();
+    }
+    if (selection?.start) return [selection.start, selection.end || selection.start].sort();
+    return null;
+  }, [dragView, pendingStart, hoverDay, selection]);
+
+  const inSelection = useCallback(
+    (iso) => Boolean(activeRange) && iso >= activeRange[0] && iso <= activeRange[1],
+    [activeRange]
+  );
+
+  /* ---------------- month navigation ---------------- */
+
+  const step = (delta) => setCursor(({ year, month }) => {
+    const d = new Date(year, month + delta, 1);
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+
+  // The date inputs set the selection without touching the grid, so bring the
+  // grid to it - a selection you cannot see is not a selection you can check.
+  // Carries a `seq` as well as the date so re-picking the same day after
+  // navigating away still brings the grid back to it.
+  useEffect(() => {
+    if (!jumpTo?.iso) return;
+    setCursor(monthOf(jumpTo.iso));
+  }, [jumpTo]);
+
+  /* ---------------- selection ---------------- */
+
+  const clearAll = useCallback(() => {
+    dragRef.current = null;
+    setDragView(null);
+    setPendingStart(null);
+    setHoverDay(null);
+    onSelect?.(null);
+  }, [onSelect]);
+
+  const commit = useCallback((a, b) => {
+    const [start, end] = [a, b].sort();
+    setPendingStart(null);
+    setHoverDay(null);
+    onSelect?.({ start, end });
+  }, [onSelect]);
+
+  const press = (iso) => {
     if (disabled || isPast(iso)) return;
     // A day already inside a block opens that block rather than starting a new
     // selection - the block is the unit, not the loose day.
     const existing = byDate.get(iso);
-    if (existing) { onBlockClick?.(existing); return; }
-    setDrag({ anchor: iso, current: iso });
+    if (existing) {
+      setPendingStart(null);
+      setHoverDay(null);
+      onBlockClick?.(existing);
+      return;
+    }
+    dragRef.current = { anchor: iso, current: iso, moved: false };
+    setDragView({ anchor: iso, current: iso });
   };
 
-  const extendDrag = (iso) => {
-    if (!drag || disabled || isPast(iso)) return;
-    setDrag((d) => (d && d.current !== iso ? { ...d, current: iso } : d));
-  };
+  /** Called from pointermove; reads the ref so it is never a render behind. */
+  const extend = useCallback((iso) => {
+    const d = dragRef.current;
+    if (!d || disabled || isPast(iso) || iso === d.current) return;
+    d.current = iso;
+    d.moved = true;
+    setDragView({ anchor: d.anchor, current: iso });
+  }, [disabled, isPast]);
 
-  const endDrag = useCallback(() => {
-    if (!drag) return;
-    const [start, end] = [drag.anchor, drag.current].sort();
-    setDrag(null);
-    onSelect?.({ start, end });
-  }, [drag, onSelect]);
+  /** Release decides what the gesture was. */
+  const release = useCallback(() => {
+    const d = dragRef.current;
+    if (!d) return;
+    dragRef.current = null;
+    setDragView(null);
 
-  // A pointer released outside the grid must still finish the selection.
+    if (d.moved) {
+      commit(d.anchor, d.current);   // it was a drag
+      return;
+    }
+    // It was a tap.
+    if (pendingStart) {
+      commit(pendingStart, d.anchor);           // second tap closes the range
+    } else {
+      // First tap of a new range. Any previously committed selection is
+      // dropped rather than extended, so a third tap reads as a fresh start.
+      setPendingStart(d.anchor);
+      setHoverDay(null);
+      onSelect?.(null);
+    }
+  }, [commit, pendingStart, onSelect]);
+
   useEffect(() => {
-    if (!drag) return undefined;
-    const up = () => endDrag();
+    // A pointer released outside the grid must still finish the gesture.
+    const up = () => release();
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
     return () => {
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
     };
-  }, [drag, endDrag]);
+  }, [release]);
 
   /** Touch drags report only the starting element, so the day is resolved from
    *  the point under the finger. */
@@ -132,10 +235,10 @@ export default function AvailabilityCalendar({
   const atCurrentMonth =
     cursor.year === new Date().getFullYear() && cursor.month === new Date().getMonth();
 
-  const step = (delta) => setCursor(({ year, month }) => {
-    const d = new Date(year, month + delta, 1);
-    return { year: d.getFullYear(), month: d.getMonth() };
-  });
+  const hasSomething = Boolean(pendingStart || selection?.start);
+  const hint = coarsePointer
+    ? 'Tap the first day, then the last, to select a range.'
+    : 'Drag across days — or tap the first day, then the last — to select a range.';
 
   return (
     <div>
@@ -160,6 +263,29 @@ export default function AvailabilityCalendar({
         </button>
       </div>
 
+      {/* How it works, worded for the device actually in use, plus the state of
+          an open selection. Both live here rather than in a tooltip, because a
+          gesture nobody is told about is a gesture nobody uses. */}
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p className="text-[11.5px] leading-relaxed text-brand-textSec" aria-live="polite">
+          {pendingStart ? (
+            <span className="font-semibold text-brand-primary">
+              Start {shortDate(pendingStart)} — now tap the last day
+              {' '}<span className="font-normal text-brand-textSec">(change month if you need to)</span>
+            </span>
+          ) : hint}
+        </p>
+        {hasSomething && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-brand-border px-2 py-0.5 text-[11px] font-semibold text-brand-textSec transition-colors hover:border-brand-primary hover:text-brand-primary"
+          >
+            <X size={11} aria-hidden="true" /> Clear
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-7 gap-1 mb-1">
         {WEEKDAYS.map((d) => (
           <div key={d} className="text-center text-[10px] font-semibold uppercase tracking-wider text-brand-textSec py-1">
@@ -175,10 +301,11 @@ export default function AvailabilityCalendar({
         className="grid grid-cols-7 gap-1 select-none"
         style={{ touchAction: 'none' }}
         onPointerMove={(e) => {
-          if (!drag) return;
+          if (!dragRef.current) return;
           const iso = dayFromPoint(e.clientX, e.clientY);
-          if (iso) extendDrag(iso);
+          if (iso) extend(iso);
         }}
+        onPointerLeave={() => setHoverDay(null)}
       >
         {cells.map((date, i) => {
           if (!date) return <div key={`pad-${i}`} className="aspect-square" />;
@@ -189,15 +316,19 @@ export default function AvailabilityCalendar({
           const meta = block ? STATUS_META[block.status] : null;
           const selected = inSelection(iso);
           const isToday = iso === today;
+          const isAnchor = iso === pendingStart;
 
           const base = 'aspect-square rounded-lg border text-[12px] sm:text-[13px] font-medium flex items-center justify-center relative transition-colors';
           const tone = past
             ? 'border-transparent text-brand-muted/50 cursor-not-allowed'
-            : selected
-              ? 'bg-brand-primary text-white border-brand-primary cursor-pointer'
-              : meta
-                ? `${meta.cell} cursor-pointer hover:brightness-95`
-                : 'border-brand-border text-brand-navy hover:border-brand-primary hover:bg-brand-primary/5 cursor-pointer';
+            : isAnchor
+              // The pending start reads as unfinished, not as a made choice.
+              ? 'bg-brand-primary/15 text-brand-primary border-brand-primary border-dashed cursor-pointer'
+              : selected
+                ? 'bg-brand-primary text-white border-brand-primary cursor-pointer'
+                : meta
+                  ? `${meta.cell} cursor-pointer hover:brightness-95`
+                  : 'border-brand-border text-brand-navy hover:border-brand-primary hover:bg-brand-primary/5 cursor-pointer';
 
           return (
             <button
@@ -208,14 +339,17 @@ export default function AvailabilityCalendar({
               aria-label={`${iso}${block ? ` — ${STATUS_META[block.status]?.label}` : ''}`}
               aria-pressed={selected}
               title={block ? `${STATUS_META[block.status]?.label}${block.city_id?.name || block.city ? ' · ' + (block.city_id?.name || block.city) : ''}` : undefined}
-              onPointerDown={(e) => { e.preventDefault(); beginDrag(iso); }}
-              onPointerEnter={() => extendDrag(iso)}
+              onPointerDown={(e) => { e.preventDefault(); press(iso); }}
+              onPointerEnter={() => {
+                if (dragRef.current) extend(iso);
+                else if (pendingStart && !isPast(iso)) setHoverDay(iso);
+              }}
               className={`${base} ${tone}`}
             >
               {date.getDate()}
               {isToday && (
                 <span
-                  className={`absolute bottom-1 h-1 w-1 rounded-full ${selected ? 'bg-white' : 'bg-brand-primary'}`}
+                  className={`absolute bottom-1 h-1 w-1 rounded-full ${selected && !isAnchor ? 'bg-white' : 'bg-brand-primary'}`}
                   aria-hidden="true"
                 />
               )}
