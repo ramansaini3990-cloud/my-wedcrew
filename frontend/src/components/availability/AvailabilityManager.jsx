@@ -7,7 +7,7 @@ import api from '../../utils/api';
 import useMasterData from '../../hooks/useMasterData';
 import { describeApiError } from '../../utils/apiError';
 import AvailabilityCalendar from './AvailabilityCalendar';
-import { STATUS_META, toISODate, blockDateToISO } from './availabilityConstants';
+import { STATUS_META, toISODate, blockDateToISO, groupIntoRuns, eachISODay } from './availabilityConstants';
 
 /**
  * The freelancer Availability tab.
@@ -47,8 +47,11 @@ export default function AvailabilityManager({ baseLocation = null }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
-  const [selection, setSelection] = useState(null);   // { start, end }
+  // The days the user has picked, as YYYY-MM-DD. Owned here rather than in the
+  // calendar so it survives month navigation and can be published in one go.
+  const [selectedDays, setSelectedDays] = useState(() => new Set());
   const [editing, setEditing] = useState(null);       // an existing block
+  const [editRange, setEditRange] = useState(null);   // { start, end } while editing
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
@@ -138,81 +141,121 @@ export default function AvailabilityManager({ baseLocation = null }) {
     };
   }, [blocks, baseLocation]);
 
-  /* ---------------- form ---------------- */
+  /* ---------------- picking days ---------------- */
 
-  // `null` arrives when the calendar drops a selection - Clear, or a tap that
-  // starts a fresh range. The form must close with it rather than keep editing
-  // dates that are no longer highlighted.
-  const openCreate = (range) => {
+  const minDate = useMemo(() => toISODate(new Date()), []);
+
+  const resetFeedback = () => { setFormError(''); setConflicts([]); };
+
+  /** One tap, one day. Picking a loose day is always a create, never an edit. */
+  const toggleDay = (iso) => {
+    if (iso < minDate) return;
     setEditing(null);
-    setSelection(range);
-    setForm(emptyForm);
-    setFormError('');
-    setConflicts([]);
+    setEditRange(null);
+    resetFeedback();
+    setSelectedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(iso)) next.delete(iso);
+      else next.add(iso);
+      return next;
+    });
   };
+
+  const clearAll = () => {
+    setSelectedDays(new Set());
+    setEditing(null);
+    setEditRange(null);
+    setForm(emptyForm);
+    resetFeedback();
+  };
+
+  /**
+   * The from/to inputs ADD every day in the span to the selection rather than
+   * replacing it. Thirty taps for a month is not a real option, and adding
+   * means the user can then untick the two days in the middle they are free.
+   *
+   * `min` on the input handles the picker; this handles a typed or pasted past
+   * date, which `min` does not block.
+   */
+  const [spanFrom, setSpanFrom] = useState('');
+  const [spanTo, setSpanTo] = useState('');
+
+  const addSpan = () => {
+    if (!spanFrom || !spanTo) return;
+    if (spanFrom < minDate || spanTo < minDate) {
+      setFormError('Availability cannot start in the past.');
+      return;
+    }
+    const [a, b] = [spanFrom, spanTo].sort();
+    setEditing(null);
+    setEditRange(null);
+    resetFeedback();
+    setSelectedDays((prev) => {
+      const next = new Set(prev);
+      for (const d of eachISODay(a, b)) if (d >= minDate) next.add(d);
+      return next;
+    });
+    jumpSeq.current += 1;
+    setJumpTo({ iso: a, seq: jumpSeq.current });
+  };
+
+  /* ---------------- form ---------------- */
 
   const openEdit = (block) => {
     setEditing(block);
-    setSelection({ start: blockDateToISO(block.start_date), end: blockDateToISO(block.end_date) });
+    setEditRange({ start: blockDateToISO(block.start_date), end: blockDateToISO(block.end_date) });
     setForm({
       status: block.status || 'available',
       state_id: block.state_id?._id || block.state_id || '',
       city_id: block.city_id?._id || block.city_id || '',
       notes: block.notes || ''
     });
-    setFormError('');
-    setConflicts([]);
+    resetFeedback();
     if (block.state_id) master.loadCities(block.state_id?._id || block.state_id);
   };
 
   const closeForm = () => {
     setEditing(null);
-    setSelection(null);
+    setEditRange(null);
+    setSelectedDays(new Set());
     setForm(emptyForm);
-    setFormError('');
-    setConflicts([]);
+    resetFeedback();
   };
 
-  /* ---------------- typed dates ---------------- */
-
-  const minDate = useMemo(() => toISODate(new Date()), []);
+  /* ---------------- what will be written ---------------- */
 
   /**
-   * The from/to inputs feed the SAME selection the calendar draws - they are a
-   * second way in, not a second form. A whole month or six weeks is miserable
-   * to drag and trivial to type, but you still see the result highlighted
-   * before you publish.
-   *
-   * `min` on the input handles the picker; this handles a typed or pasted past
-   * date, which `min` does not block.
+   * AvailabilityBlock stores one continuous span per row, so scattered days are
+   * grouped into the fewest runs that cover them: 5, 8, 14, 15, 22 becomes four
+   * blocks, with 14-15 kept together. The user never sees this - they picked
+   * days and those days are set - but it keeps the list readable and leaves
+   * blocks indistinguishable from ones made before the calendar toggled days.
    */
-  const setBound = (which, value) => {
-    if (!value || value < minDate) return;
-    jumpSeq.current += 1;
-    setJumpTo({ iso: value, seq: jumpSeq.current });
+  const runs = useMemo(() => groupIntoRuns([...selectedDays]), [selectedDays]);
 
-    const cur = selection || {};
-    const next = which === 'start'
-      ? { start: value, end: cur.end && cur.end >= value ? cur.end : value }
-      : { start: cur.start && cur.start <= value ? cur.start : value, end: value };
-
-    setEditing(null);
-    setForm(emptyForm);
-    setFormError('');
-    setConflicts([]);
-    setSelection(next);
-  };
+  /**
+   * Days already covered by a block. Tapping such a day opens it for editing
+   * instead of selecting it, so this can only be reached through the span
+   * inputs - which is exactly why the check exists.
+   *
+   * This is a pre-flight for the user's benefit, not a second copy of the rule:
+   * the server's overlap check stays authoritative and still runs on every write.
+   */
+  const clashingDays = useMemo(() => {
+    if (!selectedDays.size) return [];
+    const covered = new Set();
+    for (const b of blocks) {
+      for (const d of eachISODay(blockDateToISO(b.start_date), blockDateToISO(b.end_date))) covered.add(d);
+    }
+    return [...selectedDays].filter((d) => covered.has(d)).sort();
+  }, [blocks, selectedDays]);
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!selection) return;
     setSaving(true);
-    setFormError('');
-    setConflicts([]);
+    resetFeedback();
 
-    const body = {
-      start_date: selection.start,
-      end_date: selection.end,
+    const shared = {
       status: form.status,
       state_id: form.state_id || null,
       city_id: form.city_id || null,
@@ -221,17 +264,67 @@ export default function AvailabilityManager({ baseLocation = null }) {
 
     try {
       if (editing) {
-        await api.put(`/api/availability/blocks/${editing.id || editing._id}`, body, { timeout: 15_000 });
+        await api.put(
+          `/api/availability/blocks/${editing.id || editing._id}`,
+          { start_date: editRange.start, end_date: editRange.end, ...shared },
+          { timeout: 15_000 }
+        );
         setNotice('Availability updated.');
-      } else {
-        await api.post('/api/availability/blocks', body, { timeout: 15_000 });
-        setNotice('Availability saved.');
+        closeForm();
+        await load();
+        return;
       }
+
+      if (!runs.length) return;
+
+      /**
+       * ALL OR NOTHING. One tap-and-publish can become several rows, and there
+       * is no transaction spanning them, so a half-written selection would
+       * leave the user unable to say what is set. Clashes are caught before
+       * anything is written and the whole submission is refused with the days
+       * named, leaving the selection intact to fix.
+       */
+      if (clashingDays.length) {
+        setFormError(
+          `${clashingDays.length} of the days you picked already have availability: ` +
+          `${clashingDays.map((d) => prettyDate(d)).join(', ')}. ` +
+          'Remove those days, or edit the existing block, then publish again.'
+        );
+        return;
+      }
+
+      let saved = 0;
+      for (const run of runs) {
+        try {
+          await api.post(
+            '/api/availability/blocks',
+            { start_date: run.start, end_date: run.end, ...shared },
+            { timeout: 15_000 }
+          );
+          saved += 1;
+        } catch (err) {
+          // Only reachable if something changed underneath us between the
+          // pre-flight and the write - another tab, or another device.
+          const data = err.response?.data || {};
+          if (data.code === 'AVAILABILITY_OVERLAP') setConflicts(data.conflicts || []);
+          setFormError(
+            saved === 0
+              ? describeApiError(err, 'Could not save this availability.')
+              : `Saved ${saved} of ${runs.length} stretches and then stopped — ` +
+                `${describeApiError(err, 'a later one clashed.')} Nothing after that point was written.`
+          );
+          await load();
+          return;
+        }
+      }
+
+      setNotice(
+        `${selectedDays.size} day${selectedDays.size === 1 ? '' : 's'} published` +
+        `${runs.length > 1 ? ` across ${runs.length} entries` : ''}.`
+      );
       closeForm();
       await load();
     } catch (err) {
-      // The API already decides what overlaps and returns the offending blocks;
-      // this only renders them. There is no second copy of that rule here.
       const data = err.response?.data || {};
       if (data.code === 'AVAILABILITY_OVERLAP') setConflicts(data.conflicts || []);
       setFormError(describeApiError(err, 'Could not save this availability.'));
@@ -261,7 +354,15 @@ export default function AvailabilityManager({ baseLocation = null }) {
     await master.loadCities(stateId);
   };
 
-  const selectedDays = selection ? dayCount(selection.start, selection.end) : 0;
+  /** "5, 8, 14–15 & 22 Sept" - how a person would say what they picked. */
+  const runsLabel = useMemo(
+    () => runs
+      .map((r) => (r.start === r.end ? prettyDate(r.start) : `${prettyDate(r.start)} – ${prettyDate(r.end)}`))
+      .join(' · '),
+    [runs]
+  );
+
+  const formOpen = Boolean(editing) || selectedDays.size > 0;
 
   /* ---------------- render ---------------- */
 
@@ -270,7 +371,7 @@ export default function AvailabilityManager({ baseLocation = null }) {
       <div>
         <h2 className="text-2xl font-serif font-bold text-brand-navy">Manage Availability</h2>
         <p className="text-brand-textSec text-sm mt-1">
-          Publish where you are and whether you can be hired — a single day or a whole range at a time.
+          Tap the days you want, then publish them together with a status and location.
         </p>
       </div>
 
@@ -365,41 +466,50 @@ export default function AvailabilityManager({ baseLocation = null }) {
             <>
               <AvailabilityCalendar
                 blocks={blocks}
-                selection={selection}
+                selectedDays={selectedDays}
+                editingBlockId={editing ? (editing.id || editing._id) : null}
                 jumpTo={jumpTo}
-                onSelect={openCreate}
+                onToggleDay={toggleDay}
+                onClearAll={clearAll}
                 onBlockClick={openEdit}
                 disabled={saving}
               />
 
-              {/* Secondary input. Long ranges are faster typed than dragged. */}
-              <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-brand-border pt-3">
+              {/* Secondary input: a long stretch is faster typed than tapped.
+                  It ADDS to the selection, so days can then be unticked. */}
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-brand-border pt-3">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-textSec">
-                  Or type dates
+                  Add a stretch
                 </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <label htmlFor="av-from" className="sr-only">From date</label>
-                  <input
-                    id="av-from"
-                    type="date"
-                    value={selection?.start || ''}
-                    min={minDate}
-                    onChange={(e) => setBound('start', e.target.value)}
-                    disabled={saving}
-                    className="rounded-lg border border-brand-border bg-brand-surface px-2 py-1 text-[12.5px] text-brand-navy focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/25"
-                  />
-                  <span className="text-[12px] text-brand-textSec">to</span>
-                  <label htmlFor="av-to" className="sr-only">To date</label>
-                  <input
-                    id="av-to"
-                    type="date"
-                    value={selection?.end || ''}
-                    min={selection?.start || minDate}
-                    onChange={(e) => setBound('end', e.target.value)}
-                    disabled={saving}
-                    className="rounded-lg border border-brand-border bg-brand-surface px-2 py-1 text-[12.5px] text-brand-navy focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/25"
-                  />
-                </div>
+                <label htmlFor="av-from" className="sr-only">From date</label>
+                <input
+                  id="av-from"
+                  type="date"
+                  value={spanFrom}
+                  min={minDate}
+                  onChange={(e) => setSpanFrom(e.target.value)}
+                  disabled={saving}
+                  className="rounded-lg border border-brand-border bg-brand-surface px-2 py-1 text-[12.5px] text-brand-navy focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/25"
+                />
+                <span className="text-[12px] text-brand-textSec">to</span>
+                <label htmlFor="av-to" className="sr-only">To date</label>
+                <input
+                  id="av-to"
+                  type="date"
+                  value={spanTo}
+                  min={spanFrom || minDate}
+                  onChange={(e) => setSpanTo(e.target.value)}
+                  disabled={saving}
+                  className="rounded-lg border border-brand-border bg-brand-surface px-2 py-1 text-[12.5px] text-brand-navy focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/25"
+                />
+                <button
+                  type="button"
+                  onClick={addSpan}
+                  disabled={saving || !spanFrom || !spanTo}
+                  className="rounded-lg border border-brand-primary px-2.5 py-1 text-[12px] font-semibold text-brand-primary transition-colors hover:bg-brand-primary/5 disabled:opacity-40"
+                >
+                  Add days
+                </button>
               </div>
             </>
           )}
@@ -407,35 +517,81 @@ export default function AvailabilityManager({ baseLocation = null }) {
 
         {/* Create / edit */}
         <section className="rounded-xl border border-brand-border bg-brand-surface p-4 sm:p-5">
-          {!selection ? (
+          {!formOpen ? (
             <div className="py-8 text-center">
               <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
                 <CalendarDays size={18} aria-hidden="true" />
               </span>
-              <p className="text-[13.5px] font-semibold text-brand-navy">Nothing selected</p>
+              <p className="text-[13.5px] font-semibold text-brand-navy">No days picked</p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-brand-textSec">
-                Choose days on the calendar to publish your status and location for them.
-                Tap a coloured day to edit the block it belongs to.
+                Tap the days you want on the calendar — they do not have to be next to each other.
+                Tap a coloured day to edit what is already published there.
               </p>
             </div>
           ) : (
             <form onSubmit={submit} className="space-y-3.5">
               <div className="flex items-start justify-between gap-2">
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-[14px] font-bold text-brand-navy">
                     {editing ? 'Edit availability' : 'New availability'}
                   </h3>
-                  <p className="mt-0.5 text-[12px] text-brand-textSec">
-                    {prettyDate(selection.start)}
-                    {selection.end !== selection.start && ` — ${prettyDate(selection.end)}`}
-                    {' · '}
-                    <span className="tabular-nums">{selectedDays} day{selectedDays === 1 ? '' : 's'}</span>
-                  </p>
+                  {editing ? (
+                    <p className="mt-0.5 text-[12px] text-brand-textSec">
+                      {prettyDate(editRange.start)}
+                      {editRange.end !== editRange.start && ` — ${prettyDate(editRange.end)}`}
+                      {' · '}
+                      <span className="tabular-nums">
+                        {dayCount(editRange.start, editRange.end)} day
+                        {dayCount(editRange.start, editRange.end) === 1 ? '' : 's'}
+                      </span>
+                    </p>
+                  ) : (
+                    <>
+                      <p className="mt-0.5 text-[12px] text-brand-textSec">
+                        <span className="tabular-nums font-semibold text-brand-navy">
+                          {selectedDays.size} day{selectedDays.size === 1 ? '' : 's'}
+                        </span>
+                        {runs.length > 1 && ` · saved as ${runs.length} entries`}
+                      </p>
+                      <p className="mt-0.5 break-words text-[11.5px] leading-relaxed text-brand-textSec">
+                        {runsLabel}
+                      </p>
+                    </>
+                  )}
                 </div>
-                <button type="button" onClick={closeForm} aria-label="Cancel" className="text-brand-textSec hover:text-brand-primary">
+                <button type="button" onClick={closeForm} aria-label="Cancel" className="shrink-0 text-brand-textSec hover:text-brand-primary">
                   <X size={16} />
                 </button>
               </div>
+
+              {/* Editing changes one continuous stretch, so its dates are set
+                  here rather than by picking days on the grid. */}
+              {editing && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <label htmlFor="av-edit-from" className="sr-only">Block start date</label>
+                  <input
+                    id="av-edit-from"
+                    type="date"
+                    value={editRange.start}
+                    min={minDate}
+                    onChange={(e) => e.target.value && setEditRange((r) => ({
+                      start: e.target.value,
+                      end: r.end >= e.target.value ? r.end : e.target.value
+                    }))}
+                    className="rounded-lg border border-brand-border bg-brand-surface px-2 py-1 text-[12.5px] text-brand-navy focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/25"
+                  />
+                  <span className="text-[12px] text-brand-textSec">to</span>
+                  <label htmlFor="av-edit-to" className="sr-only">Block end date</label>
+                  <input
+                    id="av-edit-to"
+                    type="date"
+                    value={editRange.end}
+                    min={editRange.start}
+                    onChange={(e) => e.target.value && setEditRange((r) => ({ ...r, end: e.target.value }))}
+                    className="rounded-lg border border-brand-border bg-brand-surface px-2 py-1 text-[12.5px] text-brand-navy focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/25"
+                  />
+                </div>
+              )}
 
               <div>
                 <label htmlFor="av-status" className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-brand-textSec">
@@ -542,7 +698,11 @@ export default function AvailabilityManager({ baseLocation = null }) {
                   className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-primary px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-brand-primaryDark disabled:opacity-60"
                 >
                   {saving ? <Loader2 size={13} className="animate-spin" aria-hidden="true" /> : <Plus size={13} aria-hidden="true" />}
-                  {saving ? 'Saving…' : editing ? 'Save changes' : 'Publish'}
+                  {saving
+                    ? 'Saving…'
+                    : editing
+                      ? 'Save changes'
+                      : `Publish ${selectedDays.size} day${selectedDays.size === 1 ? '' : 's'}`}
                 </button>
                 {editing && (
                   <button

@@ -21,6 +21,42 @@ export const blockDateToISO = (value) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 };
 
+/** The day after an ISO day, computed in UTC so no DST shift can occur. */
+export const nextISODay = (iso) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return blockDateToISO(d);
+};
+
+/** Every ISO day from start to end, inclusive. */
+export const eachISODay = (startISO, endISO) => {
+  const out = [];
+  for (let d = startISO; d <= endISO; d = nextISODay(d)) out.push(d);
+  return out;
+};
+
+/**
+ * Collapses scattered days into the fewest contiguous runs that cover them.
+ *
+ *   ['05','08','14','15','22']  ->  05, 08, 14-15, 22
+ *
+ * This is the bridge between what the user picks (individual days) and what
+ * AvailabilityBlock stores (one row per continuous span). Grouping rather than
+ * writing a row per day keeps 14-15 as the single entry a person would call it,
+ * and keeps a block created here indistinguishable from one created before the
+ * calendar toggled days.
+ */
+export const groupIntoRuns = (days) => {
+  const sorted = [...new Set(days)].sort();
+  const runs = [];
+  for (const day of sorted) {
+    const last = runs[runs.length - 1];
+    if (last && nextISODay(last.end) === day) last.end = day;
+    else runs.push({ start: day, end: day });
+  }
+  return runs;
+};
+
 /**
  * The five statuses from AvailabilityBlock's own enum - not a new set.
  *
