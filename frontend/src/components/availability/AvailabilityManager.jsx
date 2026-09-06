@@ -21,6 +21,12 @@ import { STATUS_META, toISODate, blockDateToISO } from './availabilityConstants'
  * Nothing here changes what availability MEANS. Overlap rules, the status enum
  * and the bookable rule all come from the existing API; this file only decides
  * how a person edits them.
+ *
+ * SINGLE OWNER. Settings used to carry a second panel ("Travel & Availability")
+ * writing the same AvailabilityBlock rows through the same endpoint, with
+ * neither surface aware of the other - editing in one silently changed the
+ * other. That panel is gone and Settings now links here. Its one unique
+ * readout, "where am I today", was ported below.
  */
 
 const inputClass =
@@ -36,7 +42,7 @@ const dayCount = (startISO, endISO) =>
 
 const emptyForm = { status: 'available', state_id: '', city_id: '', notes: '' };
 
-export default function AvailabilityManager() {
+export default function AvailabilityManager({ baseLocation = null }) {
   const [blocks, setBlocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -106,6 +112,29 @@ export default function AvailabilityManager() {
 
     return { total: 30, hidden, publishedAvailable, open: 30 - hidden };
   }, [blocks]);
+
+  /**
+   * Where you are today.
+   *
+   * Ported from the old Settings "Travel & Availability" panel, which was the
+   * only surface that answered this. It is derived from the same blocks the
+   * calendar draws - never a second availability system - and falls back to the
+   * profile base location when no block covers today, because "no block" means
+   * you are at home and bookable, not that your location is unknown.
+   */
+  const today = useMemo(() => {
+    const iso = toISODate(new Date());
+    const block = blocks.find(
+      (b) => blockDateToISO(b.start_date) <= iso && blockDateToISO(b.end_date) >= iso
+    );
+    const city = block?.city_id?.name || block?.city || baseLocation?.city;
+    const state = block?.state_id?.name || block?.state || baseLocation?.state;
+    return {
+      block,
+      fromBase: !block,
+      where: [city, state].filter(Boolean).join(', ')
+    };
+  }, [blocks, baseLocation]);
 
   /* ---------------- form ---------------- */
 
@@ -240,6 +269,33 @@ export default function AvailabilityManager() {
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Where you are today - the one readout the old Settings panel had. */}
+            <div className="w-full border-t border-brand-border pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-textSec">
+                Today
+              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-brand-navy">
+                  <MapPin size={13} className="shrink-0 text-brand-primary" aria-hidden="true" />
+                  {today.where || 'Location not set'}
+                </span>
+                {today.block && (
+                  <span className={`rounded border px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wider ${
+                    STATUS_META[today.block.status]?.cell || ''
+                  }`}>
+                    {STATUS_META[today.block.status]?.label || today.block.status}
+                  </span>
+                )}
+              </div>
+              {today.fromBase && (
+                <p className="mt-1 text-[12px] text-brand-textSec">
+                  {baseLocation?.city
+                    ? 'Your base location. Nothing is published for today, so you are bookable here.'
+                    : 'Set a base location in Settings, or publish a day below.'}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -479,6 +535,14 @@ export default function AvailabilityManager() {
                           {where ? <><MapPin size={11} className="mr-1 inline" aria-hidden="true" />{where}</> : 'No location set'}
                           {b.notes ? ` · ${b.notes}` : ''}
                         </p>
+                        {/* Only the old Settings list showed this. No UI writes it,
+                            but a block that has one must not lose it here. */}
+                        {b.manual_location?.address && (
+                          <p className="mt-0.5 text-[12px] text-brand-textSec">
+                            <MapPin size={11} className="mr-1 inline" aria-hidden="true" />
+                            {b.manual_location.address}
+                          </p>
+                        )}
                       </div>
                       <div className="flex shrink-0 gap-1.5">
                         <button

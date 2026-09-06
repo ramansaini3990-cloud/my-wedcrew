@@ -14,7 +14,7 @@ import ProfileForm from '../components/profile/ProfileForm';
 import ProfileSummaryCard from '../components/dashboard/ProfileSummaryCard';
 import useMyProfile from '../hooks/useMyProfile';
 import useUnreadMessages from '../hooks/useUnreadMessages';
-import TravelAvailability from '../components/profile/TravelAvailability';
+
 import PortfolioManager from '../components/gallery/PortfolioManager';
 import FreelancerEarnings from '../components/payments/FreelancerEarnings';
 import ChangePassword from '../components/settings/ChangePassword';
@@ -400,7 +400,7 @@ export default function FreelancerDashboard() {
 
           {activeTab === 'calendar' && (
             <div className="animate-fade-in">
-              <AvailabilityManager />
+              <AvailabilityManager baseLocation={{ city: myProfile?.city, state: myProfile?.state }} />
             </div>
           )}
 
@@ -415,14 +415,28 @@ export default function FreelancerDashboard() {
               <div>
                 <h2 className="text-xl font-semibold text-brand-navy">Profile Settings</h2>
                 <p className="text-[13px] text-brand-textSec mt-0.5">
-                  Update your professional details, base location and travel schedule.
+                  Update your professional details and base location.
                 </p>
               </div>
 
               <ProfileForm role="freelancer" />
 
+              {/* Availability is owned by the Availability tab. Settings used to
+                  carry a second panel writing the same blocks; a pointer replaces
+                  it so the entry point people knew about still leads somewhere. */}
               <div className="pt-2 border-t border-brand-border">
-                <TravelAvailability baseLocation={{ city: myProfile?.city, state: myProfile?.state }} />
+                <h3 className="text-[15px] font-semibold text-brand-navy">Travel &amp; Availability</h3>
+                <p className="text-[13px] text-brand-textSec mt-0.5">
+                  Where you will be and when is managed on the{' '}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('calendar')}
+                    className="font-semibold text-brand-primary underline underline-offset-2 hover:text-brand-primaryDark focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded"
+                  >
+                    Availability tab
+                  </button>
+                  , on the calendar.
+                </p>
               </div>
 
               <div className="pt-2 border-t border-brand-border">

@@ -8,16 +8,28 @@ export const BOOKABLE_STATUSES = ['available'];
 /**
  * Date-ranged, location-aware availability ("Travel & Availability").
  *
- * This is the location layer and is deliberately SEPARATE from the existing
- * `Availability` model, which stores single-day calendar entries and is left
- * untouched:
+ * THIS IS THE ONLY MODEL THAT AFFECTS SEARCH.
  *
- *   Availability       -> "which individual days am I free"  (existing calendar)
- *   AvailabilityBlock  -> "where am I, between these dates, with what status"
+ * An earlier version of this comment claimed "search consults both" this model
+ * and `Availability`. That was never true and it misled people. What the code
+ * actually does, in routes/publicRoutes.js:
  *
- * They are complementary, not duplicates: search consults both. Overlap
- * validation happens between blocks (see chatUnread-style service helpers in
- * services/availabilityService.js).
+ *   AvailabilityBlock  -> decides WHO APPEARS. `?date=` search is exclusion-
+ *                         based: a professional is returned for a date unless a
+ *                         block whose status is outside BOOKABLE_STATUSES
+ *                         covers it. `?city_id=` additionally matches people
+ *                         whose bookable block puts them in that city, which is
+ *                         what `include_travel` switches off.
+ *
+ *   Availability       -> decides NOTHING. It is read only to build the
+ *                         `available_dates` string list shown on a public
+ *                         profile. No filter, exclusion or ranking reads it.
+ *
+ * The two overlap conceptually - both answer "when is this person free" - and
+ * consolidating them onto this model is outstanding work. Until that happens,
+ * do not assume a row here has a counterpart there, or the reverse.
+ *
+ * Overlap validation happens between blocks; see services/availabilityService.js.
  */
 const availabilityBlockSchema = new mongoose.Schema({
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
