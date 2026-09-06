@@ -8,6 +8,7 @@ import ProfessionalFilters from '../components/professionals/ProfessionalFilters
 import BookingRequestDialog from '../components/professionals/BookingRequestDialog';
 import { AlertCircle, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
+import { resultGridClass } from '../utils/publicFormat';
 
 /**
  * Public professional browse page.
@@ -60,10 +61,12 @@ const Professionals = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl pt-32">
+    <div className="container mx-auto px-4 py-8 max-w-[1600px] pt-32">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-serif font-bold text-brand-primary mb-4">Elite Professionals</h1>
-        <p className="text-brand-textSec">Discover and hire top-tier freelancers for your wedding production.</p>
+        <h1 className="text-4xl font-serif font-bold text-brand-primary mb-4">Wedding Professionals</h1>
+        <p className="text-brand-textSec">
+          Photographers, cinematographers and crew, searchable by profession, city and date.
+        </p>
       </div>
 
       {/* Filters - options come from Admin-managed master data */}
@@ -92,8 +95,8 @@ const Professionals = () => {
       )}
 
       {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
             <div key={i} className="rounded-xl border border-brand-border bg-white p-5 animate-pulse">
               <div className="flex gap-3.5">
                 <div className="h-12 w-12 rounded-full bg-brand-bg shrink-0" />
@@ -142,7 +145,7 @@ const Professionals = () => {
 
       {!loading && !error && results.length > 0 && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className={resultGridClass(results.length)}>
             {results.map((pro) => (
               <ProfessionalCard
                 key={pro.id || pro._id}

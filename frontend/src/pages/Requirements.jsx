@@ -4,6 +4,7 @@ import { AlertCircle, ClipboardList, Search } from 'lucide-react';
 import api from '../utils/api';
 import RequirementCard from '../components/RequirementCard';
 import useMasterData from '../hooks/useMasterData';
+import { resultGridClass } from '../utils/publicFormat';
 
 // Categories, states and cities come from Admin-managed master data via
 // useMasterData() - there is no hardcoded list here.
@@ -78,16 +79,16 @@ const Requirements = () => {
 
   return (
     <div className="bg-brand-bg min-h-screen pt-24 pb-16">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <header className="text-center max-w-2xl mx-auto mb-8">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-primary mb-3">
-            Live Marketplace
+            Open Roles
           </p>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-brand-navy leading-tight">
-            Premium <span className="text-brand-primary italic">Hiring Posts</span>
+            Hiring <span className="text-brand-primary italic">Requirements</span>
           </h1>
           <p className="mt-3 text-[15px] text-brand-textSec leading-relaxed">
-            Discover opportunities from production houses and companies.
+            Jobs posted by production houses and wedding companies. Filter by category, city and date.
           </p>
         </header>
 
@@ -172,8 +173,8 @@ const Requirements = () => {
 
         {/* Loading */}
         {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
               <div key={i} className="rounded-xl border border-brand-border bg-white p-5 animate-pulse">
                 <div className="h-3 w-20 rounded bg-brand-bg" />
                 <div className="mt-3 h-4 w-2/3 rounded bg-brand-bg" />
@@ -223,7 +224,7 @@ const Requirements = () => {
 
         {/* Results */}
         {!loading && !loadError && requirements.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className={resultGridClass(requirements.length)}>
             {requirements.map((req) => (
               <RequirementCard key={req.id || req._id} req={req} />
             ))}

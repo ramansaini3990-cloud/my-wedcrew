@@ -52,7 +52,9 @@ export default function ProfessionalCard({ professional, actions = null, lockedA
           )}
           <div className="min-w-0 flex-1">
             <h3 className="font-serif text-[16px] font-bold text-brand-navy leading-snug truncate group-hover:text-brand-primary transition-colors">
-              {locked ? 'Verified Professional' : p.name || 'Professional'}
+              {/* Nothing on the platform verifies anyone, so a locked card
+                  states that it is locked rather than making a claim. */}
+              {locked ? 'Profile locked' : p.name || 'Professional'}
             </h3>
             {p.profession && (
               <p className="mt-0.5 flex items-center gap-1.5 text-[12px] font-medium text-brand-primary truncate">
@@ -80,6 +82,16 @@ export default function ProfessionalCard({ professional, actions = null, lockedA
             )}
           </div>
         ) : null}
+
+        {/* The professional's own words - the one field on this response that
+            says what they actually do, beyond craft and city. Withheld by the
+            server on a locked card (bio is null there), so no guard beyond the
+            usual "hide what we were not given" is needed. */}
+        {p.bio && (
+          <p className="mt-3 line-clamp-2 text-[12.5px] leading-relaxed text-brand-textSec">
+            {p.bio}
+          </p>
+        )}
 
         {/* Facts - each hidden when absent */}
         {(p.experience_years != null || openDays > 0) && (

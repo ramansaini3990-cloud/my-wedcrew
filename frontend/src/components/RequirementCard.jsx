@@ -2,10 +2,36 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
-import { X } from 'lucide-react';
+import { X, IndianRupee, MapPin, Calendar, Clock } from 'lucide-react';
+import { formatDay, formatDayRange, formatRupees } from '../utils/publicFormat';
 
 const RequirementCard = ({ req }) => {
   const { hasAccess } = req;
+
+  /* What a freelancer decides on, worked out once.
+
+     `payment_per_freelancer` arrives as a number for subscribers and as the
+     string "Hidden" for everyone else - the API masks it server-side - so the
+     per-day and total lines only appear when it is genuinely an amount. */
+  const payAmount = Number(req.payment_per_freelancer);
+  const payIsAmount = Number.isFinite(payAmount);
+  const pay = payIsAmount ? formatRupees(payAmount) : String(req.payment_per_freelancer ?? 'Not stated');
+  const days = Number(req.number_of_days) || 1;
+  const total = payIsAmount ? formatRupees(payAmount * days) : null;
+
+  const dates = formatDayRange(req.event_date, req.end_date);
+  const posted = formatDay(req.created_at);
+
+  // `city` and `state` are free text typed by the company; requirements carry
+  // no master-data reference, so this is shown as entered rather than
+  // "corrected" into something the company did not write.
+  const place = [req.city, req.state].filter(Boolean).join(', ');
+
+  const perks = [
+    req.food && 'Food',
+    req.travel && 'Travel',
+    req.accommodation && 'Stay'
+  ].filter(Boolean);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const [chatLoading, setChatLoading] = useState(false);
@@ -96,55 +122,81 @@ const RequirementCard = ({ req }) => {
         )}
 
         <div className={`relative ${!hasAccess ? 'filter blur-sm select-none' : ''}`}>
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-2xl font-bold text-brand-primary mb-1 font-serif">{req.category}</h3>
-              <p className="text-brand-navy font-medium">{req.company_name}</p>
-            </div>
-            <div className="text-right">
-              <span className="inline-block bg-brand-primary/10 text-brand-primary text-sm font-semibold px-3 py-1 rounded-full border border-brand-primary/20">
-                Need: {req.quantity}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-4 text-sm text-brand-textSec">
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              <span>{req.city}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-              <span>{new Date(req.event_date).toLocaleDateString()}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span className="font-semibold text-brand-navy">₹{req.payment_per_freelancer} / day</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span>{req.working_hours || 'Not specified'}</span>
-            </div>
-          </div>
-
-          {req.description && (
-            <div className="mb-4 text-sm text-brand-textSec">
-              <p>{req.description}</p>
-            </div>
+          {/* PAY, DATE, PLACE LEAD.
+              A freelancer scanning this page decides on how much, when and
+              where; the craft is usually already filtered. The job title stays
+              directly beneath, still the largest text after the fee. */}
+          <p className="flex flex-wrap items-baseline gap-x-1.5 text-brand-navy">
+            <IndianRupee size={18} className="self-center shrink-0 text-brand-primary" aria-hidden="true" />
+            <span className="font-serif text-2xl font-bold tabular-nums">{pay}</span>
+            {payIsAmount && <span className="text-[13px] font-medium text-brand-textSec">per person, per day</span>}
+          </p>
+          {payIsAmount && days > 1 && (
+            <p className="mt-0.5 text-[12px] text-brand-textSec">
+              {days} days · <span className="font-semibold text-brand-navy">{total}</span> total per person
+            </p>
           )}
 
-          <div className="border-t border-brand-border pt-4 flex flex-col gap-4">
-            <div className="flex justify-between items-center text-xs">
-              <div className="flex space-x-3">
-                {req.food ? <span className="bg-green-50 text-green-700 px-2 py-1 rounded-md border border-green-200">Food: Yes</span> : <span className="bg-red-50 text-red-700 px-2 py-1 rounded-md border border-red-200">Food: No</span>}
-                {req.travel ? <span className="bg-green-50 text-green-700 px-2 py-1 rounded-md border border-green-200">Travel: Yes</span> : <span className="bg-red-50 text-red-700 px-2 py-1 rounded-md border border-red-200">Travel: No</span>}
-                {req.accommodation ? <span className="bg-green-50 text-green-700 px-2 py-1 rounded-md border border-green-200">Stay: Yes</span> : <span className="bg-red-50 text-red-700 px-2 py-1 rounded-md border border-red-200">Stay: No</span>}
-              </div>
-              <div className="text-brand-textSec">
-                Posted: {new Date(req.created_at).toLocaleDateString()}
-              </div>
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-brand-navy">
+            {dates && (
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar size={14} className="shrink-0 text-brand-primary" aria-hidden="true" />
+                <span className="font-semibold">{dates}</span>
+              </span>
+            )}
+            {place && (
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin size={14} className="shrink-0 text-brand-primary" aria-hidden="true" />
+                <span className="font-semibold">{place}</span>
+              </span>
+            )}
+          </div>
+
+          <div className="mt-3.5 border-t border-brand-border pt-3.5">
+            <h3 className="font-serif text-[17px] font-bold leading-snug text-brand-primary">{req.category}</h3>
+            <p className="mt-0.5 text-[13px] text-brand-navy">
+              {req.company_name}
+              {req.quantity ? (
+                <span className="text-brand-textSec">
+                  {' · '}{req.quantity} {req.quantity === 1 ? 'person' : 'people'} needed
+                </span>
+              ) : null}
+            </p>
+          </div>
+
+          {req.working_hours && (
+            <p className="mt-2.5 flex items-center gap-1.5 text-[12.5px] text-brand-textSec">
+              <Clock size={13} className="shrink-0 text-brand-primary" aria-hidden="true" />
+              <span className="font-medium text-brand-navy">Working hours:</span> {req.working_hours}
+            </p>
+          )}
+
+          {/* Absent when the company wrote no brief - no empty block. */}
+          {req.description && (
+            <p className="mt-2.5 line-clamp-2 text-[13px] leading-relaxed text-brand-textSec">
+              {req.description}
+            </p>
+          )}
+
+          <div className="border-t border-brand-border mt-4 pt-4 flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              {/* Only what IS provided. Three red "No" chips took the most
+                  visual weight on the card to say nothing is included. */}
+              {perks.length > 0 ? (
+                <span className="inline-flex flex-wrap items-center gap-1.5">
+                  <span className="text-brand-textSec">Provided:</span>
+                  {perks.map((perk) => (
+                    <span key={perk} className="rounded-md border border-green-200 bg-green-50 px-2 py-1 font-medium text-green-700">
+                      {perk}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span className="text-brand-textSec">Food, travel and stay not provided</span>
+              )}
+              {posted && <span className="text-brand-textSec">Posted {posted}</span>}
             </div>
-            
+
             {/* Detail page - the full brief lives there, not on the card */}
             <Link
               to={`/requirements/${req.id || req._id}`}
